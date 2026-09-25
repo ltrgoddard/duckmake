@@ -32,12 +32,12 @@ incremental rebuilds, automated documentation and tight integration with remote
 data warehouses. It's aimed at individual data engineers and small teams who
 want to build neat, reproducible data pipelines that run on a single machine.
 
-## How to use it
-
 duckmake is delivered as a single ~150-line `duckmake.mk` file. The recommended
 way to use it is to `include` it in your project's existing Makefile, allowing
 additional targets for things DuckDB can't do like downloading and extracting
 complex source data.
+
+## Example usage
 
 A simple project of mine might:
 
@@ -49,84 +49,62 @@ A simple project of mine might:
   generating a new table of matches as GeoParquet
 - Display the resulting table on a map
 
-With duckmake, we might structure this as:
+With duckmake, we could structure this like:
 
 ```
 .
 ├── Makefile
 ├── duckmake.mk
-├── data/                        # raw inputs, fetched by Make
-│   └── gem/
-│       ├── oil-gas-plants.xlsx
-│       ├── gas-pipelines.xlsx
-│       └── oil-gas-extraction.xlsx
+├── data/
+│   └── plants.xlsx          # downloaded by Make
 ├── macros/
-│   └── geo.sql                  # LOAD spatial; CREATE MACRO within_area(...)
+│   └── spatial.sql          # INSTALL spatial; LOAD spatial;
 ├── models/
 │   ├── gem/
-│   │   ├── plants.sql           # -> build/gem/plants.parquet (gem.plants)
-│   │   ├── pipelines.sql
-│   │   └── extraction.sql
+│   │   └── plants.sql       # -> build/gem/plants.parquet
 │   ├── carbonmapper/
-│   │   └── plumes.sql           # remote API query, rebuilt when the response changes
-│   ├── infrastructure.sql       # union of gem.* tables
-│   └── attribution.sql          # spatial join of plumes to infrastructure
-├── tests/
-│   └── attribution_unique.sql   # rows returned = failures
-└── build/                       # generated; one Parquet file per model
-    ├── gem/plants.parquet
-    ├── ...
-    └── attribution.parquet
+│   │   └── plumes.sql       # -> build/carbonmapper/plumes.parquet
+│   └── matches.sql          # -> build/matches.parquet
+└── tests/
+    └── matches.sql          # any rows returned are failures
 ```
 
-The Makefile includes duckmake and adds the steps DuckDB can't do alone:
-
-```make
-AREA ?= permian
-export AREA
-
-include duckmake.mk
-
-GEM := $(addprefix data/gem/,oil-gas-plants.xlsx gas-pipelines.xlsx oil-gas-extraction.xlsx)
-
-$(GEM):
-	mkdir -p $(@D) && curl -fsSL -o $@ https://example.org/gem/$(@F)
-
-build/gem/%.parquet: | $(GEM)
-
-map: build/attribution.parquet
-	duckdb -c "INSTALL spatial; LOAD spatial; \
-	  COPY (FROM '$<') TO 'www/attribution.geojson' (FORMAT gdal, DRIVER GeoJSON)"
-
-.PHONY: map
-```
-
-Models are plain `SELECT` statements. Files are read directly, and references
-to other models use their schema and table names:
+Models are plain `SELECT` statements, and refer to each other by schema and
+table name:
 
 ```sql
 -- models/gem/plants.sql
-SELECT "Unit ID" AS id, "Unit Name" AS name,
-       ST_Point(Longitude, Latitude) AS geom
-FROM st_read('data/gem/oil-gas-plants.xlsx')
-WHERE within_area(geom, getenv('AREA'))
+SELECT id, name, ST_Point(lon, lat) AS geom
+FROM st_read('data/plants.xlsx')
+WHERE country = getenv('COUNTRY')
 ```
 
 ```sql
--- models/attribution.sql
-SELECT p.plume_id, p.emission_rate, i.id AS infrastructure_id, i.type,
-       ST_Distance_Sphere(p.geom, i.geom) AS distance_m
-FROM carbonmapper.plumes p
-JOIN infrastructure i ON ST_DWithin_Spheroid(p.geom, i.geom, 500)
-QUALIFY row_number() OVER (PARTITION BY p.plume_id ORDER BY distance_m) = 1
+-- models/matches.sql
+SELECT plumes.id AS plume_id, plants.id AS plant_id
+FROM carbonmapper.plumes
+JOIN gem.plants ON ST_DWithin(plumes.geom, plants.geom, 0.01)
 ```
 
 ```sql
--- tests/attribution_unique.sql
-SELECT plume_id FROM attribution GROUP BY plume_id HAVING count(*) > 1
+-- tests/matches.sql
+SELECT plume_id FROM matches GROUP BY plume_id HAVING count(*) > 1
 ```
 
-`make` builds every table, `make build/attribution.parquet` builds one table and
+The Makefile includes duckmake and adds anything DuckDB can't do:
+
+```make
+export COUNTRY ?= US
+
+include duckmake.mk
+
+data/plants.xlsx:
+	curl -o $@ https://example.org/plants.xlsx
+
+build/gem/plants.parquet: data/plants.xlsx
+```
+
+`make` builds every table, `make build/matches.parquet` builds one table and
 its dependencies, `make test` runs the tests, `make shell` opens DuckDB with a
-view for every model, and `make AREA=bakken` rebuilds the tables that read
-`getenv('AREA')`.
+view for every model, and `make COUNTRY=CA` rebuilds the tables that read
+`getenv('COUNTRY')`.
