@@ -33,7 +33,7 @@ incremental rebuilds, automated documentation and tight integration with remote
 data warehouses. It's aimed at individual data engineers and small teams who
 want to build neat, reproducible data pipelines that run on a single machine.
 
-duckmake is delivered as a single ~150-line `duckmake.mk` file. The recommended
-way to use it is to `include` it in your project's existing Makefile, allowing
+duckmake is delivered as a ~150-line `duckmake.mk` file. The recommended way to
+use it is to `include` it in your project's existing Makefile, allowing
 additional targets for things DuckDB can't do like downloading and extracting
 complex source data.
