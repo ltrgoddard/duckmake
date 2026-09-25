@@ -52,5 +52,81 @@ A simple project of mine might:
 With duckmake, we might structure this as:
 
 ```
-TK TREE
+.
+├── Makefile
+├── duckmake.mk
+├── data/                        # raw inputs, fetched by Make
+│   └── gem/
+│       ├── oil-gas-plants.xlsx
+│       ├── gas-pipelines.xlsx
+│       └── oil-gas-extraction.xlsx
+├── macros/
+│   └── geo.sql                  # LOAD spatial; CREATE MACRO within_area(...)
+├── models/
+│   ├── gem/
+│   │   ├── plants.sql           # -> build/gem/plants.parquet (gem.plants)
+│   │   ├── pipelines.sql
+│   │   └── extraction.sql
+│   ├── carbonmapper/
+│   │   └── plumes.sql           # remote API query, rebuilt when the response changes
+│   ├── infrastructure.sql       # union of gem.* tables
+│   └── attribution.sql          # spatial join of plumes to infrastructure
+├── tests/
+│   └── attribution_unique.sql   # rows returned = failures
+└── build/                       # generated; one Parquet file per model
+    ├── gem/plants.parquet
+    ├── ...
+    └── attribution.parquet
 ```
+
+The Makefile includes duckmake and adds the steps DuckDB can't do alone:
+
+```make
+AREA ?= permian
+export AREA
+
+include duckmake.mk
+
+GEM := $(addprefix data/gem/,oil-gas-plants.xlsx gas-pipelines.xlsx oil-gas-extraction.xlsx)
+
+$(GEM):
+	mkdir -p $(@D) && curl -fsSL -o $@ https://example.org/gem/$(@F)
+
+build/gem/%.parquet: | $(GEM)
+
+map: build/attribution.parquet
+	duckdb -c "INSTALL spatial; LOAD spatial; \
+	  COPY (FROM '$<') TO 'www/attribution.geojson' (FORMAT gdal, DRIVER GeoJSON)"
+
+.PHONY: map
+```
+
+Models are plain `SELECT` statements. Files are read directly, and references
+to other models use their schema and table names:
+
+```sql
+-- models/gem/plants.sql
+SELECT "Unit ID" AS id, "Unit Name" AS name,
+       ST_Point(Longitude, Latitude) AS geom
+FROM st_read('data/gem/oil-gas-plants.xlsx')
+WHERE within_area(geom, getenv('AREA'))
+```
+
+```sql
+-- models/attribution.sql
+SELECT p.plume_id, p.emission_rate, i.id AS infrastructure_id, i.type,
+       ST_Distance_Sphere(p.geom, i.geom) AS distance_m
+FROM carbonmapper.plumes p
+JOIN infrastructure i ON ST_DWithin_Spheroid(p.geom, i.geom, 500)
+QUALIFY row_number() OVER (PARTITION BY p.plume_id ORDER BY distance_m) = 1
+```
+
+```sql
+-- tests/attribution_unique.sql
+SELECT plume_id FROM attribution GROUP BY plume_id HAVING count(*) > 1
+```
+
+`make` builds every table, `make build/attribution.parquet` builds one table and
+its dependencies, `make test` runs the tests, `make shell` opens DuckDB with a
+view for every model, and `make AREA=bakken` rebuilds the tables that read
+`getenv('AREA')`.
