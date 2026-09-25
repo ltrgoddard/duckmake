@@ -5,14 +5,17 @@ projects, inspired by [dbt](https://www.getdbt.com/) and implemented as a short
 Makefile. Write interlinked `SELECT` queries in an organised directory of SQL
 files; duckmake parses them into a dependency graph using DuckDB's
 `json_serialize_sql` function and builds a corresponding directory of Parquet
-tables. See [`example/`](example/) for a project that builds from public data, and
-[REFERENCE.md](REFERENCE.md) for the full interface.
+tables.
 
 DuckDB and Make are both wonderful 'Swiss army knife' tools -- together, they
 make it extremely easy to build multi-stage data pipelines querying local and
 external sources, e.g. for research or analytical dashboards. duckmake is a
-formalisation of a rough approach that I've developed over many years of working
-on *ad hoc* data journalism and corporate research projects at NGOs.
+formalisation of an *ad hoc* approach that I've developed over many years of
+working on data journalism and research projects at NGOs.
+
+See [`example/`](example/) for a duckmake project that analyses methane
+emissions using public data and [REFERENCE.md](REFERENCE.md) for the full
+interface.
 
 ## How it works
 
@@ -33,7 +36,26 @@ incremental rebuilds, automated documentation and tight integration with remote
 data warehouses. It's aimed at individual data engineers and small teams who
 want to build neat, reproducible data pipelines that run on a single machine.
 
-duckmake is delivered as a ~150-line `duckmake.mk` file. The recommended way to
-use it is to `include` it in your project's existing Makefile, allowing
-additional targets for things DuckDB can't do like downloading and extracting
-complex source data.
+## How to use it
+
+duckmake is delivered as a <150-line `duckmake.mk` file. The recommended way to
+deploy it is to `include` it in your project's existing Makefile, alongside
+variable definitions and additional targets for things DuckDB can't do (e.g.
+downloading and extracting complex source data). For simple projects using only
+DuckDB features and passing variables at build time, the file can be renamed to
+`Makefile` and used directly.
+
+SQL queries representing tables are stored in a `models/` directory, with
+subdirectories representing (and naming) schemas. Each table definition is a
+.sql file containing a single `SELECT` statement, which can refer freely to
+other schemas and tables in the collection by name.
+
+Tests are stored in `tests/` and macros -- SQL run before every model statement
+-- in `macros/`. Built Parquet tables are stored in `build/` organised by
+schema. `data/` is conventionally used for downloaded source data, but this
+location is optional and sources are often remote.
+
+Build tables in the normal Make way, by running `make
+build/schema/table.parquet`. duckmake will take care of dependencies,
+including checking modification dates of local and remote resources to save on
+full rebuilds and ensure fresh data when needed.
