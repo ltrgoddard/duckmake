@@ -25,8 +25,8 @@ of duckmake on next build. Then write a `SELECT` query as a .sql file under
 
 ```make
 DUCKMAKE = main
-include .duckmake/$(DUCKMAKE).mk
-.duckmake/%.mk:
+include .duckmake/$(DUCKMAKE)/duckmake.mk
+.duckmake/%/duckmake.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
 ```
 

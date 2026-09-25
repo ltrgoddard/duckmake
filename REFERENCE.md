@@ -24,7 +24,7 @@ All directories are optional. Run `make` from the project root.
 | `DUCKDB` | `duckdb` | DuckDB executable           |
 | `BUILD`  | `build`  | Output directory            |
 
-Set them before `include duckmake.mk` or on the command line.
+Set them before the `include` or on the command line.
 
 ## Targets
 
@@ -104,8 +104,8 @@ The plan stops with a message for:
 export NAME ?= value
 # a branch or tag
 DUCKMAKE = main
-include .duckmake/$(DUCKMAKE).mk
-.duckmake/%.mk:
+include .duckmake/$(DUCKMAKE)/duckmake.mk
+.duckmake/%/duckmake.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
 
 data/x.csv:           # rules for inputs DuckDB cannot fetch
@@ -113,5 +113,6 @@ data/x.csv:           # rules for inputs DuckDB cannot fetch
 ```
 
 Define extra targets after the `include` so that `all` stays the default.
-Make downloads `.duckmake/$(DUCKMAKE).mk` once; delete it to update a branch.
+Make downloads `.duckmake/$(DUCKMAKE)/duckmake.mk` once; delete that directory
+to update a branch.
 A local copy also works: `include duckmake.mk`.

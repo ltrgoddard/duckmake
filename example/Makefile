@@ -1,8 +1,8 @@
 export RADIUS ?= 250
 
 DUCKMAKE = main
-include .duckmake/$(DUCKMAKE).mk
-.duckmake/%.mk:
+include .duckmake/$(DUCKMAKE)/duckmake.mk
+.duckmake/%/duckmake.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
 
 curl = curl -sSf --retry 3 --retry-all-errors --create-dirs -A duckmake-example -o $@
