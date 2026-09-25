@@ -101,7 +101,8 @@ The plan stops with a message for:
 
 ```make
 export NAME ?= value  # visible to getenv('NAME')
-DUCKMAKE = main       # a branch or tag
+# a branch or tag
+DUCKMAKE = main
 include .duckmake/$(DUCKMAKE).mk
 .duckmake/%.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
