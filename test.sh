@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# end-to-end checks for the Makefile: ./test.sh [duckdb] [make]
+# end-to-end checks for duckmake.mk: ./test.sh [duckdb] [make]
 DUCKDB=${1:-duckdb} MAKE=${2:-make} PORT=$((20000 + RANDOM % 20000)) fails=0
 here=$(cd "$(dirname "$0")" && pwd) dir=$(mktemp -d)
-cd "$dir" && cp "$here/Makefile" . && mkdir -p models/staging models/marts tests macros seeds www
+cd "$dir" && cp "$here/duckmake.mk" . && echo "include duckmake.mk" > Makefile && mkdir -p models/staging models/marts tests macros seeds www
 python3 -m http.server $PORT --bind 127.0.0.1 --directory www >/dev/null 2>&1 & server=$!
 trap 'kill $server; wait $server 2>/dev/null; rm -rf "$dir"' EXIT
 
