@@ -21,9 +21,9 @@ APIs. Delete `data/` to fetch the data again.
 
 | Source | Access | Model |
 | ------ | ------ | ----- |
-| Carbon Mapper plume catalogue | API, paged by a Make rule to `data/plumes.json` | `carbonmapper.plumes` |
+| Carbon Mapper plume catalogue | API, fetched by a Make rule to `data/plumes.json` | `carbonmapper.plumes` |
 | OpenStreetMap, via the Overpass API | Query in `queries/osm.overpassql`, fetched by a Make rule to `data/osm.json` | `osm.facilities` |
-| Census county boundaries | Shapefile, downloaded and unzipped by a Make rule | `census.counties` |
+| Census county boundaries | Shapefile, downloaded and unzipped by two Make rules | `census.counties` |
 | Census county codes | Text file, read directly by DuckDB over HTTPS | `census.fips` |
 
 ## Layout
