@@ -97,7 +97,7 @@ SELECT DISTINCT line FROM (
   UNION ALL SELECT format('{0}.view := CREATE SCHEMA IF NOT EXISTS "{1}"; CREATE VIEW "{1}"."{2}" AS FROM ''{0}'';',
                           target, schema, name) FROM src WHERE kind = 'models'
   UNION ALL SELECT target || ': ' || coalesce(dep, '$$(dirs)') FROM edge
-  UNION ALL SELECT target || ': $$(wildcard ' || s || ')' FROM str
+  UNION ALL SELECT target || ': ' || if(regexp_matches(s, '[*?]') OR NOT contains(s, '/'), '$$(wildcard ' || s || ')', s) FROM str
             WHERE regexp_full_match(s, '[\w./*?~-]+\.\w+')
   UNION ALL SELECT target || ': FORCE' FROM vol
   UNION ALL SELECT target || '.' || k || ' += ' || x FROM vol

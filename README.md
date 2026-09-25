@@ -100,8 +100,6 @@ include duckmake.mk
 
 data/plants.xlsx:
 	curl -o $@ https://example.org/plants.xlsx
-
-build/gem/plants.parquet: data/plants.xlsx
 ```
 
 `make` builds every table, `make build/matches.parquet` builds one table and
