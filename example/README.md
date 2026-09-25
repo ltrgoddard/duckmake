@@ -22,7 +22,7 @@ APIs. Delete `data/` to fetch the data again.
 | Source | Access | Model |
 | ------ | ------ | ----- |
 | Carbon Mapper plume catalogue | API, paged by a Make rule to `data/plumes.json` | `carbonmapper.plumes` |
-| OpenStreetMap, via the Overpass API | Query in `osm.overpassql`, fetched by a Make rule to `data/osm.json` | `osm.facilities` |
+| OpenStreetMap, via the Overpass API | Query in `queries/osm.overpassql`, fetched by a Make rule to `data/osm.json` | `osm.facilities` |
 | Census county boundaries | Shapefile, downloaded and unzipped by a Make rule | `census.counties` |
 | Census county codes | Text file, read directly by DuckDB over HTTPS | `census.fips` |
 
@@ -31,7 +31,7 @@ APIs. Delete `data/` to fetch the data again.
 ```
 .
 ├── Makefile               # sets RADIUS, fetches the files in data/
-├── osm.overpassql         # the OpenStreetMap query
+├── queries/osm.overpassql # the OpenStreetMap query
 ├── macros/
 │   ├── geo.sql            # metres(): great-circle distance
 │   └── spatial.sql        # loads the spatial extension
@@ -55,7 +55,7 @@ APIs. Delete `data/` to fetch the data again.
   `carbonmapper/plumes.sql` shadow nothing outside their query.
 - **Make rules for inputs.** The files in `data/` are made by rules in the
   Makefile the first time that a model needs them. The Overpass rule depends
-  on `osm.overpassql`, so an edit to the query fetches the data again and
+  on `queries/osm.overpassql`, so an edit to the query fetches the data again and
   rebuilds `osm.facilities` and everything downstream.
 - **Remote inputs.** `census/fips.sql` reads a URL. duckmake checks the size
   and modification time of the file on every run, and rebuilds only when the

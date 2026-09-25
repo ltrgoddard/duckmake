@@ -12,7 +12,7 @@ data/plumes.json:
 	  do cat $@.page && echo && o=$$((o + 1000)); done > $@ && rm $@.page
 
 # public overpass servers are often busy, so try each in turn. a remark means a partial result
-data/osm.json: osm.overpassql
+data/osm.json: queries/osm.overpassql
 	mkdir -p data && for h in overpass.kumi.systems overpass-api.de; do \
 	  curl -sSf --retry 2 --retry-all-errors -A duckmake-example --data-urlencode data@$< -o $@ https://$$h/api/interpreter \
 	  && ! grep -q '"remark"' $@ && break; rm -f $@; done; test -s $@
