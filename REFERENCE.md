@@ -101,10 +101,15 @@ The plan stops with a message for:
 
 ```make
 export NAME ?= value  # visible to getenv('NAME')
-include duckmake.mk
+DUCKMAKE = main       # a branch or tag
+include .duckmake/$(DUCKMAKE).mk
+.duckmake/%.mk:
+	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
 
 data/x.csv:           # rules for inputs DuckDB cannot fetch
 	curl -o $@ https://example.org/x.csv
 ```
 
 Define extra targets after the `include` so that `all` stays the default.
+Make downloads `.duckmake/$(DUCKMAKE).mk` once; delete it to update a branch.
+A local copy also works: `include duckmake.mk`.
