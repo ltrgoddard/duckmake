@@ -44,7 +44,7 @@ test passes, `-n` shows what would run.
 
 - `models/<path>.sql` builds `$(BUILD)/<path>.parquet`.
 - The schema is the first directory under `models/`, or `main` for files at the
-  top level. The table name is the filename without `.sql`. Deeper directories
+  top level. The table name is the filename without .sql. Deeper directories
   do not change either: `models/a/b/c.sql` is `a.c`.
 - Names are lowercased. Two models with the same schema and name are an error.
 - Paths may contain only letters, digits, `_`, `-` and `/`. Files with spaces

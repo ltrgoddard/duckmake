@@ -17,6 +17,19 @@ See [`example/`](example/) for a duckmake project that analyses methane
 emissions using public data and [REFERENCE.md](REFERENCE.md) for the full
 interface.
 
+## Quick start
+
+Include this snippet at the top of your Makefile to install the latest version
+of duckmake on next build. Then write a `SELECT` query as a .sql file under
+`models/` and run `make` to generate a table.
+
+```make
+DUCKMAKE = main
+include .duckmake/$(DUCKMAKE).mk
+.duckmake/%.mk:
+	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
+```
+
 ## How it works
 
 duckmake implements the four features that represent 99% of my own dbt use:
