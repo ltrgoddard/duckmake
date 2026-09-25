@@ -1,1 +1,2 @@
-FROM carbonmapper.plumes WHERE kg_h < 0
+from carbonmapper.plumes
+where kg_h < 0

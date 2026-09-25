@@ -1,1 +1,2 @@
-INSTALL spatial; LOAD spatial;
+install spatial;
+load spatial;

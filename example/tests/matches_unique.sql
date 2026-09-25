@@ -1,1 +1,4 @@
-SELECT id FROM matches GROUP BY id HAVING count(*) > 1
+select id
+from matches
+group by id
+having count(*) > 1

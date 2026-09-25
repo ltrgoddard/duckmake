@@ -1,2 +1,7 @@
-SELECT coalesce(kind, '(none mapped)') AS kind, count(*) AS plumes, round(median(kg_h)) AS median_kg_h
-FROM matches GROUP BY ALL ORDER BY plumes DESC
+select
+  coalesce(kind, '(none mapped)') as kind,
+  count(*) as plumes,
+  round(median(kg_h)) as median_kg_h
+from matches
+group by all
+order by plumes desc

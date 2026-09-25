@@ -38,99 +38,182 @@ shell: $(models)
 	@$(DUCKDB) $(macros:%=-cmd '.read %') -cmd "$$VIEWS"
 
 define PLAN
-CREATE TABLE src AS
-SELECT *, if(kind = 'models', '$(BUILD)/' || stem || '.parquet', 'test/' || stem) AS target,
-       lower(if(stem LIKE '%/%', split_part(stem, '/', 1), 'main')) AS schema, lower(parse_filename(stem)) AS name
-FROM (SELECT filename AS file, unnest(regexp_extract(filename, '^(models|tests)/(.+)\.sql$$', ['kind', 'stem'])),
-             json_serialize_sql(content)::JSON AS ast
-      FROM read_text(['models/**/*.sql', 'tests/**/*.sql']));
+create table src as
+select
+  *,
+  if(kind = 'models', '$(BUILD)/' || stem || '.parquet', 'test/' || stem) as target,
+  lower(if(stem like '%/%', split_part(stem, '/', 1), 'main')) as schema,
+  lower(parse_filename(stem)) as name
+from (
+  select
+    filename as file,
+    unnest(regexp_extract(filename, '^(models|tests)/(.+)\.sql$$', ['kind', 'stem'])),
+    json_serialize_sql(content)::json as ast
+  from read_text(['models/**/*.sql', 'tests/**/*.sql'])
+);
 
-SELECT error(file || ': ' || coalesce(ast->>'error_message', 'expected one SELECT statement'))
-FROM src WHERE json_array_length(ast, '$$.statements') IS DISTINCT FROM 1;
-SELECT error(file || ': use only letters, digits, _ - and / in names')
-FROM src WHERE NOT regexp_full_match(file, '[\w/-]+\.sql');
-SELECT error('duplicate model ' || schema || '.' || name || ': ' || string_agg(file, ', '))
-FROM src WHERE kind = 'models' GROUP BY schema, name HAVING count(*) > 1;
+select error(file || ': ' || coalesce(ast->>'error_message', 'expected one SELECT statement'))
+from src
+where json_array_length(ast, '$$.statements') is distinct from 1;
 
-SET VARIABLE project = (SELECT to_json(list(ast ORDER BY target)) FROM src);
-CREATE TABLE node AS
-SELECT target, id, path, fullkey AS loc, value AS v FROM json_tree(getvariable('project'))
-JOIN (SELECT target, (row_number() OVER (ORDER BY target) - 1)::VARCHAR AS i FROM src)
-  ON i = regexp_extract(fullkey, '^\$$\[(\d+)\]', 1)
-WHERE json_extract_string(value, '$$.type') IN ('BASE_TABLE', 'TABLE_FUNCTION')
-   OR json_extract_string(value, '$$.function_name') = 'getenv' OR path LIKE '%.cte_map.map';
+select error(file || ': use only letters, digits, _ - and / in names')
+from src
+where not regexp_full_match(file, '[\w/-]+\.sql');
 
-CREATE TABLE cte AS
-SELECT id, path, loc, regexp_replace(path, 'cte_map\.map$$', '') AS scope, lower(v->>'key') AS name,
-       coalesce(v->>'$$.value.query.node.type', v->>'$$.value.query_node.type') = 'RECURSIVE_CTE_NODE' AS rec
-FROM node WHERE path LIKE '%.cte_map.map';
+select error('duplicate model ' || schema || '.' || name || ': ' || string_agg(file, ', '))
+from src
+where kind = 'models'
+group by schema, name
+having count(*) > 1;
 
-CREATE TABLE ref AS
-SELECT target, loc, lower(v->>'schema_name') AS schema, lower(v->>'table_name') AS name
-FROM node WHERE v->>'type' = 'BASE_TABLE';
+set variable project = (select to_json(list(ast order by target)) from src);
 
-CREATE TABLE str AS
-SELECT target, v->>'table_name' AS s FROM node WHERE v->>'type' = 'BASE_TABLE'
-UNION SELECT target, unnest(json_extract_string(v, '$$..value.value')) FROM node WHERE v->>'type' = 'TABLE_FUNCTION';
+create table node as
+select target, id, path, fullkey as loc, value as v
+from json_tree(getvariable('project'))
+join (select target, (row_number() over (order by target) - 1)::varchar as i from src)
+  on i = regexp_extract(fullkey, '^\$$\[(\d+)\]', 1)
+where json_extract_string(value, '$$.type') in ('BASE_TABLE', 'TABLE_FUNCTION')
+  or json_extract_string(value, '$$.function_name') = 'getenv'
+  or path like '%.cte_map.map';
 
-CREATE TABLE edge AS
-SELECT r.target, m.target AS dep FROM ref r
-LEFT JOIN src m ON m.kind = 'models' AND m.schema = coalesce(nullif(r.schema, ''), 'main') AND m.name = r.name
-WHERE NOT regexp_matches(r.name, '[./]') AND (r.schema <> '' OR NOT EXISTS (
-  FROM cte c WHERE c.name = r.name AND starts_with(r.loc, c.scope)
-  AND NOT EXISTS (FROM cte d WHERE d.path = c.path AND starts_with(r.loc, d.loc || '.')
-                  AND (d.id < c.id OR d.id = c.id AND NOT c.rec))))
-UNION SELECT s.target, m.target FROM str s
-JOIN src m ON m.kind = 'models' AND (s.s = m.target OR lower(s.s) = m.schema || '.' || m.name);
+create table cte as
+select
+  id, path, loc,
+  regexp_replace(path, 'cte_map\.map$$', '') as scope,
+  lower(v->>'key') as name,
+  coalesce(v->>'$$.value.query.node.type', v->>'$$.value.query_node.type') = 'RECURSIVE_CTE_NODE' as rec
+from node
+where path like '%.cte_map.map';
 
-WITH RECURSIVE reach(target, dep) AS (FROM edge UNION SELECT r.target, e.dep FROM reach r JOIN edge e ON e.target = r.dep)
-SELECT error('dependency cycle: ' || string_agg(DISTINCT target, ' ' ORDER BY target))
-FROM reach WHERE target = dep HAVING count(*) > 0;
+create table ref as
+select target, loc, lower(v->>'schema_name') as schema, lower(v->>'table_name') as name
+from node
+where v->>'type' = 'BASE_TABLE';
 
-WITH vol AS (
-  FROM (SELECT target, 'remote' AS k, s AS x FROM str WHERE regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
-        UNION SELECT target, 'env', json_extract_string(v, '$$..value.value')[1] FROM node
-        WHERE v->>'function_name' = 'getenv')
-  WHERE target LIKE '%.parquet' AND regexp_full_match(x, '[^\s''$$]+'))
-SELECT DISTINCT line FROM (
-  SELECT kind || ' += ' || target FROM src
-  UNION ALL SELECT format('{0}.view := CREATE SCHEMA IF NOT EXISTS "{1}"; CREATE VIEW "{1}"."{2}" AS FROM ''{0}'';',
-                          target, schema, name) FROM src WHERE kind = 'models'
-  UNION ALL SELECT target || ': ' || coalesce(dep, '$$(dirs)') FROM edge
-  UNION ALL SELECT target || ': ' || if(regexp_matches(s, '[*?]') OR NOT contains(s, '/'), '$$(wildcard ' || s || ')', s) FROM str
-            WHERE regexp_full_match(s, '[\w./*?~-]+\.\w+')
-  UNION ALL SELECT target || ': FORCE' FROM vol
-  UNION ALL SELECT target || '.' || k || ' += ' || x FROM vol
-) t(line) ORDER BY line;
+create table str as
+select target, v->>'table_name' as s
+from node
+where v->>'type' = 'BASE_TABLE'
+union
+select target, unnest(json_extract_string(v, '$$..value.value'))
+from node
+where v->>'type' = 'TABLE_FUNCTION';
+
+create table edge as
+select r.target, m.target as dep
+from ref as r
+left join src as m
+  on m.kind = 'models'
+  and m.schema = coalesce(nullif(r.schema, ''), 'main')
+  and m.name = r.name
+where not regexp_matches(r.name, '[./]')
+  and (r.schema <> '' or not exists (
+    from cte as c
+    where c.name = r.name
+      and starts_with(r.loc, c.scope)
+      and not exists (
+        from cte as d
+        where d.path = c.path
+          and starts_with(r.loc, d.loc || '.')
+          and (d.id < c.id or d.id = c.id and not c.rec)
+      )
+  ))
+union
+select s.target, m.target
+from str as s
+join src as m
+  on m.kind = 'models'
+  and (s.s = m.target or lower(s.s) = m.schema || '.' || m.name);
+
+with recursive reach(target, dep) as (
+  from edge
+  union
+  select r.target, e.dep
+  from reach as r
+  join edge as e on e.target = r.dep
+)
+select error('dependency cycle: ' || string_agg(distinct target, ' ' order by target))
+from reach
+where target = dep
+having count(*) > 0;
+
+with vol as (
+  from (
+    select target, 'remote' as k, s as x
+    from str
+    where regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
+    union
+    select target, 'env', json_extract_string(v, '$$..value.value')[1]
+    from node
+    where v->>'function_name' = 'getenv'
+  )
+  where target like '%.parquet'
+    and regexp_full_match(x, '[^\s''$$]+')
+)
+select distinct line
+from (
+  select kind || ' += ' || target from src
+  union all
+  select format(
+    '{0}.view := create schema if not exists "{1}"; create view "{1}"."{2}" as from ''{0}'';',
+    target, schema, name
+  )
+  from src
+  where kind = 'models'
+  union all
+  select target || ': ' || coalesce(dep, '$$(dirs)') from edge
+  union all
+  select target || ': ' || if(regexp_matches(s, '[*?]') or not contains(s, '/'), '$$(wildcard ' || s || ')', s)
+  from str
+  where regexp_full_match(s, '[\w./*?~-]+\.\w+')
+  union all
+  select target || ': FORCE' from vol
+  union all
+  select target || '.' || k || ' += ' || x from vol
+) as t(line)
+order by line;
 endef
 
 define PRELUDE
 $(views)
-SET VARIABLE sql = (SELECT content FROM read_text('$<'));
-SET VARIABLE fp = md5(concat_ws(chr(10), getvariable('sql'),
-  (SELECT string_agg(concat_ws(' ', filename, size, last_modified), chr(10) ORDER BY filename)
-   FROM read_blob(regexp_extract_all('$($@.remote)', '\S+'))),
-  (SELECT string_agg(n || '=' || coalesce(getenv(n), ''), chr(10) ORDER BY n)
-   FROM unnest(regexp_extract_all('$($@.env)', '\S+')) t(n))));
+set variable sql = (select content from read_text('$<'));
+set variable fp = md5(concat_ws(
+  chr(10),
+  getvariable('sql'),
+  (
+    select string_agg(concat_ws(' ', filename, size, last_modified), chr(10) order by filename)
+    from read_blob(regexp_extract_all('$($@.remote)', '\S+'))
+  ),
+  (
+    select string_agg(n || '=' || coalesce(getenv(n), ''), chr(10) order by n)
+    from unnest(regexp_extract_all('$($@.env)', '\S+')) as t(n)
+  )
+));
 endef
 
 define FRESH
 $(PRELUDE)
-SELECT error('stale') WHERE getvariable('fp') IS DISTINCT FROM
-  (SELECT decode(value) FROM parquet_kv_metadata('$@') WHERE decode(key) = 'duckmake');
+select error('stale')
+where getvariable('fp') is distinct from (
+  select decode(value)
+  from parquet_kv_metadata('$@')
+  where decode(key) = 'duckmake'
+);
 endef
 
 define MATERIALISE
 $(PRELUDE)
-COPY (FROM query(getvariable('sql'))) TO '$@' (FORMAT parquet, KV_METADATA {duckmake: getvariable('fp')});
-$(if $(quiet),,SELECT format('{}: {:,} rows', '$@', count(*)) FROM '$@';)
+copy (from query(getvariable('sql'))) to '$@' (format parquet, kv_metadata {duckmake: getvariable('fp')});
+$(if $(quiet),,select format('{}: {:,} rows', '$@', count(*)) from '$@';)
 endef
 
 define ASSERT
 $(PRELUDE)
-SELECT error(format('{}: {:,} failing rows, e.g. {}', '$<', count(*), list(t)[:3]))
-FROM query(getvariable('sql')) t HAVING count(*) > 0;
-$(if $(quiet),,SELECT '$@: pass';)
+select error(format('{}: {:,} failing rows, e.g. {}', '$<', count(*), list(t)[:3]))
+from query(getvariable('sql')) as t
+having count(*) > 0;
+$(if $(quiet),,select '$@: pass';)
 endef
 
 export PLAN FRESH MATERIALISE ASSERT
