@@ -5,7 +5,7 @@ projects, inspired by [dbt](https://www.getdbt.com/) and implemented as a short
 Makefile. Write interlinked `SELECT` queries in an organised directory of SQL
 files; duckmake parses them into a dependency graph using DuckDB's
 `json_serialize_sql` function and builds a corresponding directory of Parquet
-tables.
+tables. See [Example usage](#example-usage) for a simplified project.
 
 DuckDB and Make are both wonderful 'Swiss army knife' tools -- together, they
 make it extremely easy to build multi-stage data pipelines querying local and
@@ -35,7 +35,7 @@ want to build neat, reproducible data pipelines that run on a single machine.
 duckmake is delivered as a single ~150-line `duckmake.mk` file. The recommended
 way to use it is to `include` it in your project's existing Makefile, allowing
 additional targets for things DuckDB can't do like downloading and extracting
-complex source data. See [Example usage](#example-usage) for a simplified project.
+complex source data.
 
 ## Example usage
 
