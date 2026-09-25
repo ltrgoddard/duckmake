@@ -100,7 +100,8 @@ The plan stops with a message for:
 ## Include in a Makefile
 
 ```make
-export NAME ?= value  # visible to getenv('NAME')
+# visible to getenv('NAME')
+export NAME ?= value
 # a branch or tag
 DUCKMAKE = main
 include .duckmake/$(DUCKMAKE).mk
