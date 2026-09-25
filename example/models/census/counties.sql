@@ -1,1 +1,1 @@
-SELECT NAME AS county, geom FROM st_read('data/counties.shp') WHERE STATEFP = '35'
+SELECT fips, county, geom FROM st_read('data/counties.shp') JOIN census.fips ON fips = GEOID

@@ -1,57 +1,67 @@
-# Example: unreported flaring in New Mexico
+# Example: methane plumes and oil and gas infrastructure in New Mexico
 
-This project compares gas flares seen from space with the flaring reports that
-operators file with the New Mexico Oil Conservation Division (OCD). It finds
-each flaring episode with no report nearby, and names the operator of the
-nearest well. All inputs are public.
+This project matches methane plumes observed by
+[Carbon Mapper](https://carbonmapper.org/) to the nearest oil and gas facility
+mapped in [OpenStreetMap](https://www.openstreetmap.org/), and summarises the
+matches by facility type and county. All inputs are fetched live from public
+sources and need no account.
 
 ```sh
 cd example
-make            # build every table (about 15 s on first run)
-make test       # run the tests
-make shell      # query the tables in DuckDB
-make START=2025-06-01  # rebuild from a later start date
+make                # fetch the data and build every table
+make test           # run the tests
+make shell          # query the tables in DuckDB
+make RADIUS=100     # rebuild the matches with a 100 m search radius
 ```
+
+The first run takes a few minutes, mostly for the Carbon Mapper and Overpass
+APIs. Delete `data/` to fetch the data again.
 
 ## Sources
 
-- [VIIRS Nightfire](https://eogdata.mines.edu/products/vnf/) flare detections
-  and OCD release reports and well register, from the public
-  [Data Desk archive](https://s3.WAW3-2.cloudferro.com/data-desk-archive)
-- US county boundaries from the [Census Bureau](https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html),
-  downloaded by the Makefile
+| Source | Access | Model |
+| ------ | ------ | ----- |
+| Carbon Mapper plume catalogue | API, paged by a Make rule to `data/plumes.json` | `carbonmapper.plumes` |
+| OpenStreetMap, via the Overpass API | Query in `osm.overpassql`, fetched by a Make rule to `data/osm.json` | `osm.facilities` |
+| Census county boundaries | Shapefile, downloaded and unzipped by a Make rule | `census.counties` |
+| Census county codes | Text file, read directly by DuckDB over HTTPS | `census.fips` |
 
 ## Layout
 
 ```
 .
-├── Makefile                 # sets START, downloads data/counties.shp
+├── Makefile               # sets RADIUS, fetches the files in data/
+├── osm.overpassql         # the OpenStreetMap query
 ├── macros/
-│   ├── geo.sql              # metres(): great-circle distance
-│   └── spatial.sql          # loads the spatial extension
+│   ├── geo.sql            # metres(): great-circle distance
+│   └── spatial.sql        # loads the spatial extension
 ├── models/
-│   ├── census/counties.sql  # local file made by a Make rule
-│   ├── ocd/reports.sql      # remote file, filtered on getenv('START')
-│   ├── ocd/wells.sql        # remote file
-│   ├── viirs/nights.sql     # remote file, filtered on getenv('START')
-│   ├── flaring/episodes.sql # nights grouped into episodes, CTEs, spatial join
-│   ├── flaring/unreported.sql  # episodes with no report within 1 km, 7 days
-│   └── operators.sql        # main.operators: unreported episodes by operator
+│   ├── census/fips.sql
+│   ├── census/counties.sql       # refers to census.fips
+│   ├── carbonmapper/plumes.sql   # refers to census.counties
+│   ├── osm/facilities.sql
+│   ├── matches.sql               # main.matches: plumes to facilities
+│   ├── summary/by_kind.sql       # refers to matches
+│   └── summary/by_county.sql     # refers to matches
 └── tests/
-    ├── episodes_ordered.sql
-    └── unreported_unique.sql
+    ├── emissions_positive.sql
+    └── matches_unique.sql
 ```
 
 ## Features shown
 
-- **Remote inputs.** The models in `ocd/` and `viirs/` read Parquet over HTTPS.
-  duckmake checks the size and modification time of each file on every run,
-  and rebuilds a model only when the file changes.
-- **Environment variables.** `START` is read with `getenv('START')`. A change to
-  it rebuilds only the models that read it, and the models that depend on them.
-- **Make rules for inputs.** `data/counties.shp` is created by a rule in the
-  Makefile the first time that `census/counties.sql` needs it.
+- **References.** Models refer to each other as `schema.table`, or by name
+  alone for the `main` schema (`matches`). CTEs such as `items` and `plumes` in
+  `carbonmapper/plumes.sql` shadow nothing outside their query.
+- **Make rules for inputs.** The files in `data/` are made by rules in the
+  Makefile the first time that a model needs them. The Overpass rule depends
+  on `osm.overpassql`, so an edit to the query fetches the data again and
+  rebuilds `osm.facilities` and everything downstream.
+- **Remote inputs.** `census/fips.sql` reads a URL. duckmake checks the size
+  and modification time of the file on every run, and rebuilds only when the
+  file changes.
+- **Environment variables.** `matches.sql` reads `getenv('RADIUS')`. A change to
+  it rebuilds `matches` and the two summaries, and nothing else.
 - **Macros.** `macros/` loads an extension and defines a function for every
-  model and test.
-- **References.** Models refer to each other as `schema.table`. The CTEs `nights` and `numbered`
-  in `flaring/episodes.sql` do not create dependencies.
+  model and test. An edit to a macro rebuilds everything.
+- **Tests.** Each file in `tests/` returns the rows that break a rule.
