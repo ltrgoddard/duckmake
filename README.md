@@ -51,12 +51,12 @@ want to build neat, reproducible data pipelines that run on a single machine.
 
 ## How to use it
 
-duckmake is delivered as a <150-line `duckmake.mk` file. The recommended way to
-deploy it is to `include` it in your project's existing Makefile, alongside
-variable definitions and additional targets for things DuckDB can't do (e.g.
-downloading and extracting complex source data). For simple projects using only
-DuckDB features and passing variables at build time, the file can be renamed to
-`Makefile` and used directly.
+duckmake is delivered as a ~200-line `duckmake.mk` file, which is mostly SQL.
+The recommended way to deploy it is to `include` it in your project's existing
+Makefile, alongside variable definitions and additional targets for things
+DuckDB can't do (e.g. downloading and extracting complex source data). For
+simple projects using only DuckDB features and passing variables at build time,
+the file can be renamed to `Makefile` and used directly.
 
 SQL queries representing tables are stored in a `models/` directory, with
 subdirectories representing (and naming) schemas. Each table definition is a
