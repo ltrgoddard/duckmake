@@ -35,7 +35,7 @@ want to build neat, reproducible data pipelines that run on a single machine.
 duckmake is delivered as a single ~150-line `duckmake.mk` file. The recommended
 way to use it is to `include` it in your project's existing Makefile, allowing
 additional targets for things DuckDB can't do like downloading and extracting
-complex source data.
+complex source data. See [Example usage](#example-usage) for a simplified project.
 
 ## Example usage
 
