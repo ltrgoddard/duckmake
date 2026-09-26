@@ -88,19 +88,15 @@ from node
 where v->>'type' = 'BASE_TABLE';
 
 create table str as
-select target, v->>'table_name' as s, true as arg
+select target, v->>'table_name' as s
 from node
 where v->>'type' = 'BASE_TABLE'
-union
-select target, unnest(json_extract_string(v, '$$..value.value')), false
-from node
-where v->>'type' = 'TABLE_FUNCTION'
 union
 select target, unnest(if(
   a->>'function_name' = 'list_value',
   json_extract_string(a, '$$.children[*].value.value'),
   [a->>'$$.value.value']
-)), true
+))
 from (select target, v->'$$.function.children[0]' as a from node where v->>'type' = 'TABLE_FUNCTION');
 
 create table pat as
@@ -108,7 +104,7 @@ select
   target, s,
   replace(replace(replace(replace(replace(s, '.', '\.'), '**/', '%'), '*', '[^/]*'), '?', '[^/]'), '%', '(.*/)?') as re
 from str
-where arg and regexp_full_match(s, '[\w./~-]*[*?][\w./*?~-]*');
+where regexp_full_match(s, '[\w./~-]*[*?][\w./*?~-]*');
 
 create table edge as
 select r.target, m.target as dep
@@ -160,7 +156,7 @@ with vol as (
   from (
     select target, 'sources' as k, s as x
     from str
-    where arg and regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
+    where regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
     union
     select target, 'sources', s
     from pat

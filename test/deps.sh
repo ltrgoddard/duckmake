@@ -50,6 +50,8 @@ d sglob "select count(*) as n from read_parquet(['build/s/*.parquet', 'build/?.p
 e "globs over models" sglob "\$(wildcard build/?.parquet) \$(wildcard build/s/*.parquet) FORCE build/a.parquet build/s/other.parquet"
 d args "from read_csv('data/x.csv', columns = {'id': 'int'}, dateformat = '%d.%m.%Y')"
 e "named arguments" args "data/x.csv"
+d later "from read_csv('data/x.csv', names = ['s.other'], nullstr = 'y.z')"
+e "only the path argument" later "data/x.csv"
 d macro "from lookup"
 e "table created in a macro" macro "\$(dirs)"
 d system "select count(*) as n from information_schema.tables"
