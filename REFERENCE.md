@@ -118,7 +118,7 @@ The plan stops with a message for:
 # visible to getenv('NAME')
 export NAME ?= value
 # a branch or tag
-DUCKDB_MK = main
+DUCKDB_MK = v0.1.0
 include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
 .duckdb.mk/%/duckdb.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
@@ -129,5 +129,5 @@ data/x.csv:           # rules for inputs DuckDB cannot fetch
 
 Define extra targets after the `include` so that `all` stays the default.
 Make downloads `.duckdb.mk/$(DUCKDB_MK)/duckdb.mk` once; delete that directory
-to update a branch.
+to update a branch. Tags are listed on the [releases page](https://github.com/ltrgoddard/duckdb.mk/releases).
 A local copy also works: `include duckdb.mk`.

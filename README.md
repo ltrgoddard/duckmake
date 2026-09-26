@@ -19,12 +19,13 @@ interface.
 
 ## Quick start
 
-Include this snippet at the top of your Makefile to install the latest version
-of duckdb.mk on next build. Then write a `SELECT` query as a .sql file under
-`models/` and run `make` to generate a table.
+Include this snippet at the top of your Makefile to install duckdb.mk v0.1.0
+on next build; set `DUCKDB_MK` to a newer tag, or `main`, to upgrade. Then
+write a `SELECT` query as a .sql file under `models/` and run `make` to
+generate a table.
 
 ```make
-DUCKDB_MK = main
+DUCKDB_MK = v0.1.0
 include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
 .duckdb.mk/%/duckdb.mk:
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
