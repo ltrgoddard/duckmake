@@ -39,7 +39,7 @@ shell: $(models)
 	@$(DUCKDB) $(macros:%=-cmd '.read %') -cmd "$$VIEWS"
 
 dag: $(BUILD)/plan.mk
-	@$(db) -c "$$DAG"
+	@cat $(BUILD)/dag.mmd
 
 define PLAN
 create table src as
@@ -156,7 +156,7 @@ from reach
 where target = dep
 having count(*) > 0;
 
-with vol as (
+create table vol as
   from (
     select target, 'sources' as k, s as x
     from str
@@ -170,8 +170,30 @@ with vol as (
     where v->>'function_name' = 'getenv'
   )
   where target like '%.parquet'
-    and not regexp_matches(x, '\s')
-)
+    and not regexp_matches(x, '\s');
+
+create table arc as
+select dep as d, target as t from edge where dep is not null
+union select s, target from str where regexp_full_match(s, '[\w./*?~-]+\.\w+')
+union select x, target from vol where k = 'sources';
+
+create table vert as
+select n, 'n' || row_number() over (order by n) as id, coalesce(any_value(s), '[("' || replace(n, '"', '#quot;') || '")]') as s
+from (
+  select target, if(kind = 'models', '["' || schema || '.' || name || '"]', '{{"' || target || '"}}') from src
+  union all select unnest([d, t]), null from arc
+) as a(n, s)
+group by n;
+
+copy (
+  select line from (
+    select 0, 'flowchart LR'
+    union all select 1, '  ' || id || s from vert
+    union all select 2, '  ' || a.id || ' --> ' || b.id from arc join vert as a on a.n = d join vert as b on b.n = t
+  ) as l(k, line)
+  order by k, line
+) to '$(BUILD)/dag.mmd' (format csv, header false, quote '', escape '');
+
 select distinct line
 from (
   select kind || ' += ' || target from src
@@ -238,25 +260,4 @@ having count(*) > 0;
 $(if $(quiet),,select '$@: pass';)
 endef
 
-define DAG
-create table plan as
-select t, op, replace(replace(replace(regexp_replace(d, '^\$$\((wildcard )?(.+)\)$$', '\2'), '$$$$', '$$'), '\#', '#'), '''''', '''') as d
-from (select unnest(regexp_extract(line, '^(\S+?)(:|\.sources \+=|\.view :=| \+=) (.+)$$', ['t', 'op', 'd'])) from read_text('$<'), unnest(string_split(content, chr(10))) as l(line));
-create table edge as select distinct d, t from plan where op in (':', '.sources +=') and d not in ('FORCE', 'dirs');
-create table node as
-select n, 'n' || row_number() over (order by n) as id, coalesce(any_value(s), '[("' || replace(n, '"', '#quot;') || '")]') as s
-from (
-  select t, regexp_replace(d, '.* view "(.+)"\."(.+)" as .*', '["\1.\2"]') from plan where op = '.view :='
-  union all select d, '{{"' || d || '"}}' from plan where t = 'tests'
-  union all select unnest([d, t]), null from edge
-) as a(n, s)
-group by n;
-select line from (
-  select 0, 'flowchart LR'
-  union all select 1, '  ' || id || s from node
-  union all select 2, '  ' || a.id || ' --> ' || b.id from edge join node as a on a.n = d join node as b on b.n = t
-) as l(k, line)
-order by k, line;
-endef
-
-export PLAN FRESH MATERIALISE ASSERT DAG
+export PLAN FRESH MATERIALISE ASSERT

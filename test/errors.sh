@@ -47,7 +47,7 @@ t "runtime error is retried" "!boom"
 echo "select if(range = 3000000, error('late'), range) as id from range(4000000)" > models/ok.sql
 t "error midway through writing" "!late"
 is "error midway keeps the last good output" "$(q "select string_agg(id, ' ') from 'build/ok.parquet'")" "$before"
-is "error midway leaves no temporary files" "$(find build -type f ! -name '*.parquet' ! -name plan.mk)" ""
+is "error midway leaves no temporary files" "$(find build -type f ! -name '*.parquet' ! -name plan.mk ! -name dag.mmd)" ""
 echo "select if(range = 3000000, error('late'), range) as id from range(4000000)" > models/new.sql
 t "new model fails midway" "!late"
 is "failed new model leaves no output" "$(find build -name 'new*')" ""

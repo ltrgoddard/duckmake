@@ -1,4 +1,4 @@
-# the dag target: a mermaid flowchart of models, tests and sources from the plan
+# the dag target: the mermaid flowchart the plan writes to build/dag.mmd
 mkdir -p models/s tests data && printf 'id\n1\n' > data/x.csv
 echo "from read_csv('data/x.csv')" > models/a.sql
 echo "from a, read_csv('http://example.org/it''s#\$1.csv')" > models/s/Up.sql
