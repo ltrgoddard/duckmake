@@ -95,8 +95,8 @@ interrupted build leaves the previous output, and the next run tries again.
 ## Output
 
 Each built model prints `<target>: <n> rows`. Each passing test prints
-`test/<path>: pass`. A failing test prints its row count and up to three
-example rows, and stops Make.
+`test/<path>: pass`. A failing test prints its row count and its three
+smallest rows as examples, and stops Make.
 
 ## Errors
 

@@ -228,7 +228,7 @@ endef
 
 define ASSERT
 $(PRELUDE)
-select error(format('{}: {:,} failing rows, e.g. {}', '$<', count(*), list(t)[:3]))
+select error(format('{}: {:,} failing rows, e.g. {}', '$<', count(*), min(t, 3)))
 from query(getvariable('sql')) as t
 having count(*) > 0;
 $(if $(quiet),,select '$@: pass';)

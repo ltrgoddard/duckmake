@@ -61,6 +61,8 @@ echo "from ok where id > 0" > tests/fails.sql
 t "failing test" "!tests/fails.sql: 1 failing rows, e.g. [{'id': 1}]" test
 echo "select range as n from range(1000)" > tests/fails.sql
 t "failing test examples" "!tests/fails.sql: 1,000 failing rows, e.g. [{'n': 0}, {'n': 1}, {'n': 2}]" test
+echo "select range as n, 'row ' || range as label from range(10000000) order by n desc" > tests/fails.sql
+t "failing test over ten million rows" "!10,000,000 failing rows, e.g. [{'n': 0, 'label': row 0}, {'n': 1," test
 echo "from nothing" > tests/fails.sql
 t "broken test" "!Table with name nothing does not exist" test
 rm tests/fails.sql
