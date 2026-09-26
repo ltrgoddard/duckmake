@@ -18,6 +18,7 @@ clean: ; rm -rf $(BUILD)
 .DELETE_ON_ERROR:
 
 ifneq ($(filter-out clean,$(or $(MAKECMDGOALS),all)),)
+$(if $(wildcard $(BUILD)/plan.mk),,$(shell mkdir -p $(BUILD) && touch -t 200001010000 $(BUILD)/plan.mk))
 include $(BUILD)/plan.mk
 endif
 

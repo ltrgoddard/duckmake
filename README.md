@@ -54,9 +54,6 @@ $ make
 make: Nothing to be done for `all'.
 ```
 
-The first run on Make 3.81 also prints a harmless `build/plan.mk: No such file
-or directory` warning before it creates the plan.
-
 ## Requirements
 
 - [DuckDB](https://duckdb.org) 1.4.1 or later
@@ -99,7 +96,7 @@ want to build neat, reproducible data pipelines that run on a single machine.
   [dbt-duckdb](https://github.com/duckdb/dbt-duckdb): a Python install, project
   and profile configuration, and `ref()` in each query. It has many more
   features, such as incremental models, snapshots and generated documentation.
-- [SQLMesh](https://sqlmesh.com): also infers dependencies from SQL, and adds
+- [SQLMesh](https://github.com/SQLMesh/sqlmesh): also infers dependencies from SQL, and adds
   plans, virtual environments and column-level lineage. It is a larger Python
   framework.
 - A hand-written Makefile: works well, but you maintain each dependency by
