@@ -154,20 +154,20 @@ where target = dep
 having count(*) > 0;
 
 create table vol as
-  from (
-    select target, 'sources' as k, s as x
-    from str
-    where regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
-    union
-    select target, 'sources', s
-    from pat
-    union
-    select target, 'env', coalesce(v->>'$$.children[0].value.value', v->>'$$.arguments[0].expression.value.value')
-    from node
-    where v->>'function_name' = 'getenv'
-  )
-  where target like '%.parquet'
-    and not regexp_matches(x, '\s');
+from (
+  select target, 'sources' as k, s as x
+  from str
+  where regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
+  union
+  select target, 'sources', s
+  from pat
+  union
+  select target, 'env', coalesce(v->>'$$.children[0].value.value', v->>'$$.arguments[0].expression.value.value')
+  from node
+  where v->>'function_name' = 'getenv'
+)
+where target like '%.parquet'
+  and not regexp_matches(x, '\s');
 
 create table arc as
 select dep as d, target as t from edge where dep is not null

@@ -51,7 +51,7 @@ want to build neat, reproducible data pipelines that run on a single machine.
 
 ## How to use it
 
-duckdb.mk is delivered as a ~250-line `duckdb.mk` file, which is mostly SQL.
+duckdb.mk is delivered as a single ~250-line file, which is mostly SQL.
 The recommended way to deploy it is to `include` it in your project's existing
 Makefile, alongside variable definitions and additional targets for things
 DuckDB can't do (e.g. downloading and extracting complex source data). For
@@ -72,7 +72,8 @@ Build tables in the normal Make way, by running `make
 build/schema/table.parquet`. duckdb.mk will take care of dependencies,
 including checking modification dates of local and remote resources to save on
 full rebuilds and ensure fresh data when needed. Each run also writes the
-dependency graph to `build/dag.mmd` as a [Mermaid](https://mermaid.js.org) flowchart.
+dependency graph to `build/dag.mmd` as a [Mermaid](https://mermaid.js.org)
+flowchart.
 
 ## Development
 
