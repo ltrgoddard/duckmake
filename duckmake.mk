@@ -5,8 +5,8 @@ self   := $(lastword $(MAKEFILE_LIST))
 tree   := $(shell find models tests ! -path '* *' \( -type d -o -name '*.sql' \) 2>/dev/null)
 dirs   := $(filter-out %.sql,$(tree))
 macros := $(sort $(wildcard macros/*.sql))
-duckdb := $(DUCKDB) -init /dev/null -bail -list -noheader
-run    := $(duckdb) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.output' -c
+db := $(DUCKDB) -init /dev/null -bail -list -noheader
+run := $(db) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.output' -c
 views   = $(foreach d,$^,$($d.view))
 flags   = $(if $(findstring =,$(firstword $(MAKEFLAGS))),,$(firstword -$(MAKEFLAGS)))
 quiet   = $(findstring s,$(flags))
@@ -26,7 +26,7 @@ test: $(tests)
 .PHONY: $(tests)
 
 $(BUILD)/plan.mk: $(self) $(tree)
-	@mkdir -p $(@D) && $(duckdb) -c "$$PLAN" > $@
+	@mkdir -p $(@D) && $(db) -c "$$PLAN" > $@
 
 $(BUILD)/%.parquet: models/%.sql $(wildcard macros) $(macros)
 	@$(recheck) { mkdir -p $(@D) && $(run) "$$MATERIALISE"; }
@@ -39,7 +39,7 @@ shell: $(models)
 	@$(DUCKDB) $(macros:%=-cmd '.read %') -cmd "$$VIEWS"
 
 dag: $(BUILD)/plan.mk
-	@$(duckdb) -c "$$DAG"
+	@$(db) -c "$$DAG"
 
 define PLAN
 create table src as
