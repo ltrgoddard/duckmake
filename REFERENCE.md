@@ -121,7 +121,8 @@ export NAME ?= value
 DUCKDB_MK = v0.1.0
 include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
 .duckdb.mk/%/duckdb.mk:
-	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
+	curl -sSfL --create-dirs -o $@ \
+	  https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
 
 data/x.csv:           # rules for inputs DuckDB cannot fetch
 	curl -o $@ https://example.org/x.csv
