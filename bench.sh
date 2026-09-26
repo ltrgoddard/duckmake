@@ -42,6 +42,9 @@ row() {
 printf '%-44s' "" && printf '%12s' "${versions[@]}" && echo
 row "plan, 500 models" "models 500" "rm -f build/plan.mk" "$MAKE build/plan.mk"
 row "plan, 2000 models" "models 2000" "rm -f build/plan.mk" "$MAKE build/plan.mk"
+row "plan, chain of 1000 models" "mkdir models && echo 'select 1 as n' > models/m0.sql && \
+  for i in \$(seq 999); do echo \"select n + 1 as n from m\$((i - 1))\" > models/m\$i.sql; done" \
+  "rm -f build/plan.mk" "$MAKE build/plan.mk"
 row "build, 500 models, -j4" "models 500" "rm -rf build" "$MAKE -j4"
 row "no-op, 500 models" "models 500 && $MAKE -j4" "" "$MAKE"
 row "rebuild after editing a root, 500 models" "models 500 && $MAKE -j4" "touch models/s0/m0.sql" "$MAKE -j4"
