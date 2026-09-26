@@ -71,8 +71,8 @@ location is optional and sources are often remote.
 Build tables in the normal Make way, by running `make
 build/schema/table.parquet`. duckdb.mk will take care of dependencies,
 including checking modification dates of local and remote resources to save on
-full rebuilds and ensure fresh data when needed. Each plan also writes the
-dependency graph to `build/dag.mmd` as a [Mermaid](https://mermaid.js.org) flowchart; `make -s dag` prints it.
+full rebuilds and ensure fresh data when needed. Each run also writes the
+dependency graph to `build/dag.mmd` as a [Mermaid](https://mermaid.js.org) flowchart.
 
 ## Development
 

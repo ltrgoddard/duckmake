@@ -1,4 +1,4 @@
-# the dag target: the mermaid flowchart the plan writes to build/dag.mmd
+# the mermaid flowchart each run writes to build/dag.mmd
 mkdir -p models/s tests data && printf 'id\n1\n' > data/x.csv
 echo "from read_csv('data/x.csv')" > models/a.sql
 echo "from a, read_csv('http://example.org/it''s#\$1.csv')" > models/s/Up.sql
@@ -7,7 +7,7 @@ echo "select 1 as id" > models/lone.sql
 echo "from lookup" > models/macro.sql
 echo "from s.up where id < 0" > tests/t.sql
 echo "select 1 as id where false" > tests/none.sql
-is "flowchart" "$($MAKE -s DUCKDB="$DUCKDB" dag)" 'flowchart LR
+is "flowchart" "$($MAKE -sn DUCKDB="$DUCKDB" >/dev/null; cat build/dag.mmd)" 'flowchart LR
   n10{{"test/t"}}
   n1["main.a"]
   n2["main.glob"]
@@ -23,4 +23,3 @@ is "flowchart" "$($MAKE -s DUCKDB="$DUCKDB" dag)" 'flowchart LR
   n6 --> n2
   n7 --> n1
   n8 --> n5'
-t "builds nothing" "" dag

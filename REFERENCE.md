@@ -34,11 +34,13 @@ Set them before the `include` or on the command line.
 | `test`                   | Build the models that tests need, then run all tests |
 | `test/<path>`            | Run one test                                         |
 | `shell`                  | Build every model, then open DuckDB with macros and a view per model |
-| `dag`                    | Print `build/dag.mmd`, the [Mermaid](https://mermaid.js.org) flowchart of models, tests and sources that each plan writes; builds nothing |
 | `clean`                  | Remove `$(BUILD)`                                    |
 
 Standard Make flags apply: `-j` builds in parallel, `-s` hides row counts and
 test passes, `-n` shows what would run.
+
+Every run also writes the dependency graph to `$(BUILD)/dag.mmd` as a
+[Mermaid](https://mermaid.js.org) flowchart of models, tests and sources.
 
 ## Names
 

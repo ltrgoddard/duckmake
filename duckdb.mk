@@ -14,7 +14,7 @@ recheck = $(if $(filter-out FORCE,$?)$(findstring B,$(flags)),,$(run) "$$FRESH" 
 
 all:
 clean: ; rm -rf $(BUILD)
-.PHONY: all test shell dag clean FORCE
+.PHONY: all test shell clean FORCE
 .DELETE_ON_ERROR:
 
 ifneq ($(filter-out clean,$(or $(MAKECMDGOALS),all)),)
@@ -37,9 +37,6 @@ $(tests): test/%: tests/%.sql $(macros)
 shell: export VIEWS = $(views)
 shell: $(models)
 	@$(DUCKDB) $(macros:%=-cmd '.read %') -cmd "$$VIEWS"
-
-dag: $(BUILD)/plan.mk
-	@cat $(BUILD)/dag.mmd
 
 define PLAN
 create table src as

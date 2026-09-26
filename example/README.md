@@ -9,7 +9,6 @@ by facility type and county. All inputs are fetched live from public sources.
 make             # fetch the data and build every table
 make test        # run the tests
 make shell       # query the tables in DuckDB
-make dag         # print the graph below
 make RADIUS=100  # rebuild the matches with a 100 m search radius
 ```
 
@@ -35,7 +34,7 @@ The first run takes a few minutes. Delete `data/` to fetch the data again.
     └── matches_unique.sql
 ```
 
-`make dag` draws the dependency graph:
+`build/dag.mmd` holds the dependency graph:
 
 ```mermaid
 flowchart LR
