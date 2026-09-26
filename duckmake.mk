@@ -66,20 +66,16 @@ where kind = 'models'
 group by schema, name
 having count(*) > 1;
 
-set variable project = (select to_json(list(ast order by target)) from src);
-
 create table node as
 select target, id, path, fullkey as loc, value as v
-from json_tree(getvariable('project'))
-join (select target, (row_number() over (order by target) - 1)::varchar as i from src)
-  on i = regexp_extract(fullkey, '^\$$\[(\d+)\]', 1)
+from src, json_tree(ast)
 where json_extract_string(value, '$$.type') in ('BASE_TABLE', 'TABLE_FUNCTION')
   or json_extract_string(value, '$$.function_name') = 'getenv'
   or path like '%.cte_map.map';
 
 create table cte as
 select
-  id, path, loc,
+  target, id, path, loc,
   regexp_replace(path, 'cte_map\.map$$', '') as scope,
   lower(v->>'key') as name,
   coalesce(v->>'$$.value.query.node.type', v->>'$$.value.query_node.type') = 'RECURSIVE_CTE_NODE' as rec
@@ -92,13 +88,20 @@ from node
 where v->>'type' = 'BASE_TABLE';
 
 create table str as
-select target, v->>'table_name' as s
+select target, v->>'table_name' as s, true as arg
 from node
 where v->>'type' = 'BASE_TABLE'
 union
-select target, unnest(json_extract_string(v, '$$..value.value'))
+select target, unnest(json_extract_string(v, '$$..value.value')), false
 from node
-where v->>'type' = 'TABLE_FUNCTION';
+where v->>'type' = 'TABLE_FUNCTION'
+union
+select target, unnest(if(
+  a->>'function_name' = 'list_value',
+  json_extract_string(a, '$$.children[*].value.value'),
+  [a->>'$$.value.value']
+)), true
+from (select target, v->'$$.function.children[0]' as a from node where v->>'type' = 'TABLE_FUNCTION');
 
 create table edge as
 select r.target, m.target as dep
@@ -110,11 +113,13 @@ left join src as m
 where not regexp_matches(r.name, '[./]')
   and (r.schema <> '' or not exists (
     from cte as c
-    where c.name = r.name
+    where c.target = r.target
+      and c.name = r.name
       and starts_with(r.loc, c.scope)
       and not exists (
         from cte as d
-        where d.path = c.path
+        where d.target = c.target
+          and d.path = c.path
           and starts_with(r.loc, d.loc || '.')
           and (d.id < c.id or d.id = c.id and not c.rec)
       )
@@ -122,9 +127,11 @@ where not regexp_matches(r.name, '[./]')
 union
 select s.target, m.target
 from str as s
-join src as m
-  on m.kind = 'models'
-  and (s.s = m.target or lower(s.s) = m.schema || '.' || m.name);
+join src as m on m.kind = 'models' and s.s = m.target
+union
+select s.target, m.target
+from str as s
+join src as m on m.kind = 'models' and lower(s.s) = m.schema || '.' || m.name;
 
 with recursive reach(target, dep) as (
   from edge
@@ -140,16 +147,16 @@ having count(*) > 0;
 
 with vol as (
   from (
-    select target, 'remote' as k, s as x
+    select target, 'sources' as k, s as x
     from str
-    where regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
+    where arg and (regexp_matches(s, '^[a-z][a-z0-9+.-]*://') or regexp_full_match(s, '[\w./~-]*[*?][\w./*?~-]*'))
     union
-    select target, 'env', json_extract_string(v, '$$..value.value')[1]
+    select target, 'env', v->>'$$.children[0].value.value'
     from node
     where v->>'function_name' = 'getenv'
   )
   where target like '%.parquet'
-    and regexp_full_match(x, '[^\s''$$]+')
+    and not regexp_matches(x, '\s')
 )
 select distinct line
 from (
@@ -170,7 +177,8 @@ from (
   union all
   select target || ': FORCE' from vol
   union all
-  select target || '.' || k || ' += ' || x from vol
+  select target || '.' || k || ' += ' || replace(replace(replace(x, '''', ''''''), '$$', '$$$$'), '#', '\#')
+  from vol
 ) as t(line)
 order by line;
 endef
@@ -183,7 +191,7 @@ set variable fp = md5(concat_ws(
   getvariable('sql'),
   (
     select string_agg(concat_ws(' ', filename, size, last_modified), chr(10) order by filename)
-    from read_blob(regexp_extract_all('$($@.remote)', '\S+'))
+    from read_blob(regexp_extract_all('$($@.sources)', '\S+'))
   ),
   (
     select string_agg(n || '=' || coalesce(getenv(n), ''), chr(10) order by n)
