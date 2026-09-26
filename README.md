@@ -17,6 +17,18 @@ See [`example/`](example/) for a duckdb.mk project that analyses methane
 emissions using public data and [REFERENCE.md](REFERENCE.md) for the full
 interface.
 
+## Compared with other tools
+
+- [dbt](https://www.getdbt.com/) with
+  [dbt-duckdb](https://github.com/duckdb/dbt-duckdb): a Python install, project
+  and profile configuration, and `ref()` in each query. It has many more
+  features, such as incremental models, snapshots and generated documentation.
+- [SQLMesh](https://github.com/SQLMesh/sqlmesh): also infers dependencies
+  from SQL, and adds plans, virtual environments and column-level lineage. It
+  is a larger Python framework.
+- A hand-written Makefile: works well, but you maintain each dependency by
+  hand. duckdb.mk generates those rules from the SQL.
+
 ## Quick start
 
 You need [DuckDB](https://duckdb.org) 1.4.1 or later, GNU Make 3.81 or later
@@ -83,18 +95,6 @@ This project does not aim to implement the 'full fat' features of dbt like
 incremental rebuilds, automated documentation and tight integration with remote
 data warehouses. It's aimed at individual data engineers and small teams who
 want to build neat, reproducible data pipelines that run on a single machine.
-
-## Compared with other tools
-
-- [dbt](https://www.getdbt.com/) with
-  [dbt-duckdb](https://github.com/duckdb/dbt-duckdb): a Python install, project
-  and profile configuration, and `ref()` in each query. It has many more
-  features, such as incremental models, snapshots and generated documentation.
-- [SQLMesh](https://github.com/SQLMesh/sqlmesh): also infers dependencies
-  from SQL, and adds plans, virtual environments and column-level lineage. It
-  is a larger Python framework.
-- A hand-written Makefile: works well, but you maintain each dependency by
-  hand. duckdb.mk generates those rules from the SQL.
 
 ## How to use it
 
