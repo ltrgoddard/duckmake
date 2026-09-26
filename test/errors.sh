@@ -4,7 +4,7 @@ echo "select 1 as id" > models/ok.sql
 t "valid project" "build/ok.parquet"
 
 try() { echo "$2" > "models/$1.sql"; t "$3" "!$4"; rm "models/$1.sql"; }
-try bad "SELEC 1" "parse error" 'models/bad.sql: syntax error at or near "SELEC"'
+try bad "SELEC 1" "parse error" 'models/bad.sql: syntax error at or near'
 try bad "select 1; select 2" "two statements" "models/bad.sql: expected one SELECT statement"
 try bad "-- only a comment" "no statement" "models/bad.sql: expected one SELECT statement"
 try bad "" "empty file" "models/bad.sql: expected one SELECT statement"

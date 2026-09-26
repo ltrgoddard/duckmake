@@ -5,8 +5,8 @@ self   := $(lastword $(MAKEFILE_LIST))
 tree   := $(shell find models tests ! -path '* *' \( -type d -o -name '*.sql' \) 2>/dev/null)
 dirs   := $(filter-out %.sql,$(tree))
 macros := $(sort $(wildcard macros/*.sql))
-db := $(DUCKDB) -init /dev/null -bail -list -noheader
-run := $(db) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.output' -c
+db     := $(DUCKDB) -init /dev/null -bail -list -noheader
+run    := $(db) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.output' -c
 views   = $(foreach d,$^,$($d.view))
 flags   = $(if $(findstring =,$(firstword $(MAKEFLAGS))),,$(firstword -$(MAKEFLAGS)))
 quiet   = $(findstring s,$(flags))
@@ -98,10 +98,10 @@ where v->>'type' = 'BASE_TABLE'
 union
 select target, unnest(if(
   a->>'function_name' = 'list_value',
-  json_extract_string(a, '$$.children[*].value.value'),
+  json_extract_string(a, '$$.children[*].value.value') || json_extract_string(a, '$$.arguments[*].expression.value.value'),
   [a->>'$$.value.value']
 ))
-from (select target, v->'$$.function.children[0]' as a from node where v->>'type' = 'TABLE_FUNCTION');
+from (select target, coalesce(v->'$$.function.children[0]', v->'$$.function.arguments[0].expression') as a from node where v->>'type' = 'TABLE_FUNCTION');
 
 create table pat as
 select
@@ -165,7 +165,7 @@ with vol as (
     select target, 'sources', s
     from pat
     union
-    select target, 'env', v->>'$$.children[0].value.value'
+    select target, 'env', coalesce(v->>'$$.children[0].value.value', v->>'$$.arguments[0].expression.value.value')
     from node
     where v->>'function_name' = 'getenv'
   )
