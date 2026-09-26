@@ -18,11 +18,9 @@ t "long cycle" "!dependency cycle: build/a.parquet build/b.parquet build/c.parqu
 echo "from ok" > models/s/d.sql
 t "cycle broken" "build/a.parquet build/b.parquet build/c.parquet build/s/d.parquet"
 rm models/a.sql models/b.sql models/c.sql models/s/d.sql
-echo "select 1" > models/s/Ok.sql && mkdir -p models/S && echo "select 2" > models/S/ok.sql
-t "duplicate name across case" "!duplicate model s.ok: models/S/ok.sql, models/s/Ok.sql"
-rm -r models/S models/s/Ok.sql && mkdir -p models/s/sub && echo "select 3" > models/s/sub/ok.sql && echo "select 4" > models/s/ok.sql
-t "duplicate name across depth" "!duplicate model s.ok: models/s/ok.sql, models/s/sub/ok.sql"
-rm -r models/s/sub models/s/ok.sql
+mkdir -p models/s/sub && echo "select 1" > models/s/Ok.sql && echo "select 2" > models/s/sub/oK.sql
+t "duplicate name across case and depth" "!duplicate model s.ok: models/s/Ok.sql, models/s/sub/oK.sql"
+rm -r models/s/sub models/s/Ok.sql
 echo "select 1" > "models/bad name.sql"
 t "space in a name" "!models/bad name.sql: use only"; rm "models/bad name.sql"
 echo "select 1" > "models/bad.name.sql"

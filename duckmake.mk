@@ -61,7 +61,7 @@ select error(file || ': use only letters, digits, _ - and / in names')
 from src
 where not regexp_full_match(file, '[\w/-]+\.sql');
 
-select error('duplicate model ' || schema || '.' || name || ': ' || string_agg(file, ', '))
+select error('duplicate model ' || schema || '.' || name || ': ' || string_agg(file, ', ' order by file))
 from src
 where kind = 'models'
 group by schema, name

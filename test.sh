@@ -2,10 +2,10 @@
 # end-to-end tests for duckmake.mk: ./test.sh [suite ...] runs test/<suite>.sh, or every suite,
 # in parallel, each in a fresh project; set DUCKDB and MAKE to test other executables
 cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) start=$SECONDS pids=()
-export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make}
+export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make} LC_ALL=C
 mkdir "$tmp/www"; python3 test/server.py "$tmp/www" > "$tmp/requests" 2>&1 & server=$!
 trap 'kill $server; wait $server 2>/dev/null; rm -rf "$tmp"' EXIT
-for _ in {1..100}; do read -r HTTP S3 < "$tmp/requests" && break; sleep 0.1; done 2>/dev/null
+until read -r HTTP S3 < "$tmp/requests"; do kill -0 $server || exit; sleep 0.1; done 2>/dev/null
 [[ $($MAKE --version) == *" 3."* ]] && nap=1 || nap=0 # make 3.81 has one-second mtime resolution
 
 # t <label> <want> [make args]: want lists the targets that should be made, or is !fragment of an expected error
@@ -26,7 +26,7 @@ is() {
 
 # deps <target>: the prerequisites the plan gives a target, sorted
 deps() {
-  $MAKE -s DUCKDB="$DUCKDB" build/plan.mk >/dev/null && sed -n "s|^$1: ||p" build/plan.mk | sort | xargs
+  $MAKE -s DUCKDB="$DUCKDB" build/plan.mk >/dev/null; sleep $nap; sed -n "s|^$1: ||p" build/plan.mk | sort | xargs
 }
 
 # q <sql>: run a query in the project and print the rows

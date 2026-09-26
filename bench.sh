@@ -2,10 +2,10 @@
 # benchmarks for duckmake.mk: ./bench.sh [git ref ...] times the working copy and each ref,
 # reporting the best of three runs in seconds; set DUCKDB and MAKE to use other executables
 cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) versions=(working "$@")
-export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make}
+export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make} LC_ALL=C
 mkdir "$tmp/www"; python3 test/server.py "$tmp/www" > "$tmp/requests" 2>&1 & server=$!
 trap 'kill $server; wait $server 2>/dev/null; rm -rf "$tmp"' EXIT
-for _ in {1..100}; do read -r HTTP S3 < "$tmp/requests" && break; sleep 0.1; done 2>/dev/null
+until read -r HTTP S3 < "$tmp/requests"; do kill -0 $server || exit; sleep 0.1; done 2>/dev/null
 cp duckmake.mk "$tmp/working.mk" && for ref; do git show "$ref:duckmake.mk" > "$tmp/$ref.mk" || exit; done
 
 # models <n>: n models in ten schemas, each joining up to three earlier ones through ctes
