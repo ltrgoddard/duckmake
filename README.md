@@ -82,3 +82,6 @@ cover rebuilds, dependency resolution, errors, remote sources over HTTP and S3
 generated rows and a random 300-model project checked against an independent
 model of its dependency graph. `./bench.sh [git ref ...]` times the working
 copy against earlier versions.
+
+Contributions -- bug fixes, ergonomics, new features -- are encouraged. Please
+file an issue in the first instance.
