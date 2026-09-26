@@ -34,6 +34,7 @@ Set them before the `include` or on the command line.
 | `test`                   | Build the models that tests need, then run all tests |
 | `test/<path>`            | Run one test                                         |
 | `shell`                  | Build every model, then open DuckDB with macros and a view per model |
+| `dag`                    | Print a [Mermaid](https://mermaid.js.org) flowchart of models, tests and sources; builds nothing |
 | `clean`                  | Remove `$(BUILD)`                                    |
 
 Standard Make flags apply: `-j` builds in parallel, `-s` hides row counts and
