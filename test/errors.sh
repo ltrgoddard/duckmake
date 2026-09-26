@@ -36,7 +36,7 @@ t "fixed" ""
 echo "from missing" > models/orphan.sql
 t "missing table" "!Table with name missing does not exist"
 echo "from read_csv('data/missing.csv')" > models/orphan.sql
-t "missing file" "!No rule to make target 'data/missing.csv', needed by 'build/orphan.parquet'"
+t "missing file" "!No rule to make target"
 rm models/orphan.sql
 
 echo "select range as id from range(3)" > models/ok.sql

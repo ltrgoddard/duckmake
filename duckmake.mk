@@ -8,8 +8,8 @@ macros := $(sort $(wildcard macros/*.sql))
 duckdb := $(DUCKDB) -init /dev/null -bail -list -noheader
 run    := $(duckdb) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.output' -c
 views   = $(foreach d,$^,$($d.view))
-flags   = $(firstword -$(MAKEFLAGS))
-quiet   = $(if $(findstring =,$(flags)),,$(findstring s,$(flags)))
+flags   = $(if $(findstring =,$(firstword $(MAKEFLAGS))),,$(firstword -$(MAKEFLAGS)))
+quiet   = $(findstring s,$(flags))
 
 all:
 clean: ; rm -rf $(BUILD)
@@ -28,7 +28,7 @@ $(BUILD)/plan.mk: $(self) $(tree)
 	@mkdir -p $(@D) && $(duckdb) -c "$$PLAN" > $@
 
 $(BUILD)/%.parquet: models/%.sql $(wildcard macros) $(macros)
-	@$(if $(filter-out FORCE,$?),,$(run) "$$FRESH" 2>/dev/null ||) { mkdir -p $(@D) && $(run) "$$MATERIALISE"; }
+	@$(if $(filter-out FORCE,$?)$(findstring B,$(flags)),,$(run) "$$FRESH" 2>/dev/null ||) { mkdir -p $(@D) && $(run) "$$MATERIALISE"; }
 
 $(tests): test/%: tests/%.sql $(macros)
 	@$(run) "$$ASSERT"
