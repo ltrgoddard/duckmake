@@ -1,21 +1,23 @@
 # serves a directory over HTTP for test.sh, plus S3 through moto when installed;
 # prints "<http port> <s3 port or ->" once ready and logs "<method> <path> <status>" per request
-#   /bare/<path>  serves <path> with no Last-Modified header
-#   /nohead/<path>  refuses HEAD requests
-import http.server, io, os, re, sys
+#   <dir>/bare/<file>  serves <dir>/<file> with no Last-Modified header
+#   <dir>/nohead/<file>  refuses HEAD requests
+import http.server, io, os, re, sys, threading
+
+log = threading.Lock()
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        return super().translate_path(re.sub(r'^/(bare|nohead)/', '/', path))
+        return super().translate_path(re.sub(r'/(bare|nohead)/', '/', path, count=1))
 
     def do_HEAD(self):
-        if self.path.startswith('/nohead/'):
+        if '/nohead/' in self.path:
             return self.send_error(405)
         super().do_HEAD()
 
     def send_header(self, key, value):
-        if not (self.path.startswith('/bare/') and key == 'Last-Modified'):
+        if not ('/bare/' in self.path and key == 'Last-Modified'):
             super().send_header(key, value)
 
     def end_headers(self):
@@ -41,7 +43,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return io.BytesIO(body)
 
     def log_request(self, code='-', size='-'):
-        print(self.command, self.path, int(code), flush=True)
+        with log:
+            print(self.command, self.path, int(code), flush=True)
 
     def log_message(self, *args):
         pass

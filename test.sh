@@ -5,7 +5,7 @@ cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) start=$SECONDS pids=()
 export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make}
 mkdir "$tmp/www"; python3 test/server.py "$tmp/www" > "$tmp/requests" 2>&1 & server=$!
 trap 'kill $server; wait $server 2>/dev/null; rm -rf "$tmp"' EXIT
-for _ in {1..100}; do read -r HTTP S3 < "$tmp/requests" && break; sleep 0.1; done
+for _ in {1..100}; do read -r HTTP S3 < "$tmp/requests" && break; sleep 0.1; done 2>/dev/null
 [[ $($MAKE --version) == *" 3."* ]] && nap=1 || nap=0 # make 3.81 has one-second mtime resolution
 
 # t <label> <want> [make args]: want lists the targets that should be made, or is !fragment of an expected error
@@ -18,9 +18,10 @@ t() {
   else echo "FAIL $label: want [$want] got [$got]"; sed 's/^/     /' <<<"$out"; fi
 }
 
-# is <label> <got> <want>: compare two strings
+# is <label> <got> <want>: compare two strings, showing lines wanted (<) and got (>) if they differ
 is() {
-  if [[ $2 == "$3" ]]; then echo "ok   $1"; else echo "FAIL $1: want [$3] got [$2]"; fi
+  if [[ $2 == "$3" ]]; then echo "ok   $1"
+  else echo "FAIL $1"; diff <(echo "$3") <(echo "$2") | grep '^[<>]' | head -20 | sed 's/^/     /'; fi
 }
 
 # deps <target>: the prerequisites the plan gives a target, sorted
@@ -35,9 +36,8 @@ q() {
 
 # requests: the "<method> <path> <status>" requests for this suite's files since the last call
 requests() {
-  local n=$(wc -l < "$tmp/requests")
-  sed -n "$((${seen:-1} + 1)),${n}p" "$tmp/requests" | sed -nE "s#^(\w+) /((bare|nohead)/)?$suite/#\1 /\2#p"
-  seen=$n
+  local seen=$(cat "$tmp/$suite.seen" 2>/dev/null || echo 1) n=$(wc -l < "$tmp/requests")
+  sed -n "$((seen + 1)),${n}p" "$tmp/requests" | sed -n "s# /$suite/# /#p"; echo "$n" > "$tmp/$suite.seen"
 }
 
 suites=("$@") && [[ $suites ]] || suites=($(ls test/*.sh | xargs -n1 basename | sed 's/\.sh$//'))
@@ -45,7 +45,7 @@ for suite in "${suites[@]}"; do
   mkdir "$tmp/$suite" "$tmp/www/$suite" && (
     cd "$tmp/$suite" && cp "$here/duckmake.mk" . && echo "include duckmake.mk" > Makefile
     www=$tmp/www/$suite url=http://127.0.0.1:$HTTP/$suite s=$SECONDS
-    source "$here/test/$suite.sh"
+    source "$here/test/$suite.sh" || echo "FAIL $suite: stopped with status $?"
     echo "---- $suite: $((SECONDS - s))s"
   ) > "$tmp/$suite.log" 2>&1 & pids+=($!)
 done

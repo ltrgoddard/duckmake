@@ -103,6 +103,13 @@ select target, unnest(if(
 )), true
 from (select target, v->'$$.function.children[0]' as a from node where v->>'type' = 'TABLE_FUNCTION');
 
+create table pat as
+select
+  target, s,
+  replace(replace(replace(replace(replace(s, '.', '\.'), '**/', '%'), '*', '[^/]*'), '?', '[^/]'), '%', '(.*/)?') as re
+from str
+where arg and regexp_full_match(s, '[\w./~-]*[*?][\w./*?~-]*');
+
 create table edge as
 select r.target, m.target as dep
 from ref as r
@@ -131,7 +138,11 @@ join src as m on m.kind = 'models' and s.s = m.target
 union
 select s.target, m.target
 from str as s
-join src as m on m.kind = 'models' and lower(s.s) = m.schema || '.' || m.name;
+join src as m on m.kind = 'models' and lower(s.s) = m.schema || '.' || m.name
+union
+select g.target, m.target
+from pat as g
+join src as m on m.kind = 'models' and m.target <> g.target and regexp_full_match(m.target, g.re);
 
 with recursive reach(target, dep) as (
   from edge
@@ -149,7 +160,10 @@ with vol as (
   from (
     select target, 'sources' as k, s as x
     from str
-    where arg and (regexp_matches(s, '^[a-z][a-z0-9+.-]*://') or regexp_full_match(s, '[\w./~-]*[*?][\w./*?~-]*'))
+    where arg and regexp_matches(s, '^[a-z][a-z0-9+.-]*://')
+    union
+    select target, 'sources', s
+    from pat
     union
     select target, 'env', v->>'$$.children[0].value.value'
     from node
@@ -212,7 +226,7 @@ endef
 
 define MATERIALISE
 $(PRELUDE)
-copy (from query(getvariable('sql'))) to '$@' (format parquet, kv_metadata {duckmake: getvariable('fp')});
+copy (from query(getvariable('sql'))) to '$@' (format parquet, use_tmp_file true, kv_metadata {duckmake: getvariable('fp')});
 $(if $(quiet),,select format('{}: {:,} rows', '$@', count(*)) from '$@';)
 endef
 
