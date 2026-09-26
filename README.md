@@ -31,6 +31,40 @@ include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
 	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
 ```
 
+### Example
+
+Two models, one referring to the other by name:
+
+```sql
+-- models/staging/orders.sql
+select * from read_csv('data/orders.csv')
+
+-- models/revenue.sql
+select customer, sum(amount) as total
+from staging.orders
+group by customer
+```
+
+```console
+$ make
+build/staging/orders.parquet: 3 rows
+build/revenue.parquet: 2 rows
+$ make
+make: Nothing to be done for `all'.
+```
+
+The first run on Make 3.81 also prints a harmless `build/plan.mk: No such file
+or directory` warning before it creates the plan.
+
+## Requirements
+
+- [DuckDB](https://duckdb.org) 1.4.1 or later
+- GNU Make 3.81 or later (the version that ships with macOS works)
+- `curl`, to fetch duckdb.mk with the snippet above
+
+CI runs the test suite on Linux and macOS against DuckDB 1.4.1 and the latest
+release.
+
 ## How it works
 
 duckdb.mk implements the four features that represent 99% of my own dbt use:
@@ -45,10 +79,30 @@ table and schema names are derived from filenames and directories, while
 internal references are resolved automatically (no need for dbt's
 `ref("model")`).
 
+On each run, DuckDB parses every model and test with `json_serialize_sql`. One
+SQL query over the resulting syntax trees finds table references, file paths,
+URLs and `getenv` calls, and writes them as Make rules to `build/plan.mk`. Make
+includes that file and rebuilds only the tables whose inputs are newer. Each
+Parquet file also stores a fingerprint of its query, remote sources and
+environment variables. Make rechecks remote data and settings on every run,
+but rebuilds a table only when that fingerprint changes.
+
 This project does not aim to implement the 'full fat' features of dbt like
 incremental rebuilds, automated documentation and tight integration with remote
 data warehouses. It's aimed at individual data engineers and small teams who
 want to build neat, reproducible data pipelines that run on a single machine.
+
+## Compared with other tools
+
+- [dbt](https://www.getdbt.com/) with
+  [dbt-duckdb](https://github.com/duckdb/dbt-duckdb): a Python install, project
+  and profile configuration, and `ref()` in each query. It has many more
+  features, such as incremental models, snapshots and generated documentation.
+- [SQLMesh](https://sqlmesh.com): also infers dependencies from SQL, and adds
+  plans, virtual environments and column-level lineage. It is a larger Python
+  framework.
+- A hand-written Makefile: works well, but you maintain each dependency by
+  hand. duckdb.mk generates those rules from the SQL.
 
 ## How to use it
 
@@ -78,13 +132,12 @@ flowchart.
 
 ## Development
 
-`./test.sh` runs the end-to-end tests in `test/` in parallel against real
-`make` and `duckdb` executables (set `MAKE` and `DUCKDB` to try others). They
-cover rebuilds, dependency resolution, errors, remote sources over HTTP and S3
-(`pip install 'moto[server]'` to include S3), a pipeline over millions of
-generated rows and a random 300-model project checked against an independent
-model of its dependency graph. `./bench.sh [git ref ...]` times the working
-copy against earlier versions.
+`./test.sh` runs the end-to-end tests in `test/` in parallel against real `make`
+and `duckdb` executables (set `MAKE` and `DUCKDB` to try others). They cover
+rebuilds, dependency resolution, errors, remote sources over HTTP and S3, a
+pipeline over millions of generated rows and a random 300-model project checked
+against an independent model of its dependency graph. `./bench.sh [git ref ...]`
+times the working copy against earlier versions.
 
 Contributions -- bug fixes, ergonomics, new features -- are encouraged. Please
 file an issue in the first instance.
