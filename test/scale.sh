@@ -49,7 +49,7 @@ is "values" "$(q "select concat_ws(' ', filename, n) from read_parquet('build/**
 t "no-op" "" -j4
 first=$(find models -name m0.sql) && touch "$first"
 t "touch the first model" "$(dependents "$(sed 's/^models/build/; s/sql$/parquet/' <<<"$first")")" -j4
-picked=$(shuf -n 5 --random-source=<(yes) <<<"${all// /$'\n'}" | xargs)
+picked=$(xargs -n1 <<<"$all" | awk 'NR % 60 == 17' | xargs)
 for m in $picked; do touch "$(sed 's/^build/models/; s/parquet$/sql/' <<<"$m")"; done
 t "touch five models" "$(dependents $picked)" -j4
 t "no-op again" "" -j4

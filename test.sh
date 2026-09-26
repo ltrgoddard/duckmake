@@ -36,7 +36,7 @@ q() {
 
 # requests: the "<method> <path> <status>" requests for this suite's files since the last call
 requests() {
-  local seen=$(cat "$tmp/$suite.seen" 2>/dev/null || echo 1) n=$(wc -l < "$tmp/requests")
+  local seen=$(cat "$tmp/$suite.seen" 2>/dev/null || echo 1) n=$(($(wc -l < "$tmp/requests")))
   sed -n "$((seen + 1)),${n}p" "$tmp/requests" | sed -n "s# /$suite/# /#p"; echo "$n" > "$tmp/$suite.seen"
 }
 

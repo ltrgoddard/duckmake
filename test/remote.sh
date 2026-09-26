@@ -1,7 +1,7 @@
 # remote sources over HTTP and S3: reads, fingerprints and the requests they cost
 mkdir -p models/http models/s3 tests
 bumps=0
-bump() { touch -d "@$(($(date +%s) + (bumps += 5)))" "$@"; } # a later Last-Modified for each change
+bump() { python3 -c "import os, sys, time; os.utime(sys.argv[1], (time.time() + $((bumps += 5)),) * 2)" "$1"; } # a later Last-Modified
 printf 'k,v\na,1\nb,2\n' > "$www/a.csv" && printf 'k,v\nc,3\n' > "$www/b.csv"
 printf '[{"k": "a", "v": [1, 2]}, {"k": "b", "v": [3]}]' > "$www/a.json"
 printf 'k,v\nx,1\n' > "$www/bare.csv" && cp "$www/bare.csv" "$www/nohead.csv"

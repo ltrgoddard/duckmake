@@ -89,8 +89,8 @@ e "nested cte" cte/nested "build/base.parquet"
 
 echo "from base where id < 0" > tests/t.sql
 is "test" "$(deps test/t)" "build/base.parquet"
-is "views" "$(grep -c '\.view := ' build/plan.mk)" "$(find models -name '*.sql' | wc -l)"
-is "view names" "$(grep -oE '"(main"."my-model|up"."mixed|deep"."leaf)" as' build/plan.mk | sort | paste -sd' ')" \
+is "views" "$(grep -c '\.view := ' build/plan.mk)" "$(($(find models -name '*.sql' | wc -l)))"
+is "view names" "$(grep -oE '"(main"."my-model|up"."mixed|deep"."leaf)" as' build/plan.mk | sort | paste -sd' ' -)" \
   '"deep"."leaf" as "main"."my-model" as "up"."mixed" as'
 
 rm models/url.sql models/template.sql

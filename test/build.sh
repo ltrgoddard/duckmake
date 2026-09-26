@@ -73,8 +73,8 @@ t "single target rebuilds only its own dependencies" "build/marts/revenue.parque
 t "single target is up to date" "" build/marts/shadow.parquet
 t "single test builds what it needs" "test/revenue_ids" test/revenue_ids
 t "nested test" "test/sub/remote_count" test/sub/remote_count
-touch models/raw_orders.sql && before=$(ls -l --full-time build/*.parquet build/*/*.parquet)
-is "dry run builds nothing" "$($MAKE -n >/dev/null && ls -l --full-time build/*.parquet build/*/*.parquet)" "$before"
+touch models/raw_orders.sql && touch build/.before
+is "dry run builds nothing" "$($MAKE -n >/dev/null && find build -name '*.parquet' -newer build/.before)" ""
 t "after a dry run" "build/marts/revenue.parquet build/marts/shadow.parquet build/raw_orders.parquet build/staging/orders.parquet"
 t "always make" "$all" -B
 echo "from marts.revenue where total > 0" > tests/fails.sql
