@@ -105,10 +105,10 @@ rm -r build
 t "parallel" "$all build/by_path.parquet $tests" -j8 all test
 t "parallel no-op" "" -j8
 is "row count" "$(q "select count(*) from 'build/seeds.parquet'")" 5
-is "fingerprint stored" "$(q "select count(*) from parquet_kv_metadata('build/remote.parquet') where decode(key) = 'duckmake'")" 1
+is "fingerprint stored" "$(q "select count(*) from parquet_kv_metadata('build/remote.parquet') where decode(key) = 'duckdb.mk'")" 1
 t "BUILD" "build/elsewhere/customers.parquet build/elsewhere/staging/customers.parquet" \
   BUILD=build/elsewhere build/elsewhere/customers.parquet
 t "clean" "" clean
-is "clean removes the build" "$(ls | xargs)" "Makefile duckmake.mk macros models seeds tests"
+is "clean removes the build" "$(ls | xargs)" "Makefile duckdb.mk macros models seeds tests"
 t "clean without a plan" "" clean
 t "clean and build" "$all build/by_path.parquet $tests" clean all test

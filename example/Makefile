@@ -1,11 +1,11 @@
 export RADIUS ?= 250
 
-DUCKMAKE = main
-include .duckmake/$(DUCKMAKE)/duckmake.mk
-.duckmake/%/duckmake.mk:
-	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
+DUCKDB_MK = main
+include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
+.duckdb.mk/%/duckdb.mk:
+	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
 
-curl = curl -sSf --retry 3 --retry-all-errors --create-dirs -A duckmake-example -o $@
+curl = curl -sSf --retry 3 --retry-all-errors --create-dirs -A duckdb.mk-example -o $@
 
 data/cb_2023_us_county_20m.zip:
 	$(curl) https://www2.census.gov/geo/tiger/GENZ2023/shp/$(@F)

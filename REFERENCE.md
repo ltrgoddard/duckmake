@@ -1,4 +1,4 @@
-# duckmake reference
+# duckdb.mk reference
 
 ## Requirements
 
@@ -52,7 +52,7 @@ test passes, `-n` shows what would run.
 
 ## Dependencies
 
-duckmake parses every model and test with `json_serialize_sql`. A file depends
+duckdb.mk parses every model and test with `json_serialize_sql`. A file depends
 on:
 
 | In the SQL                           | Dependency                              |
@@ -116,16 +116,16 @@ The plan stops with a message for:
 # visible to getenv('NAME')
 export NAME ?= value
 # a branch or tag
-DUCKMAKE = main
-include .duckmake/$(DUCKMAKE)/duckmake.mk
-.duckmake/%/duckmake.mk:
-	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckmake/$*/duckmake.mk
+DUCKDB_MK = main
+include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
+.duckdb.mk/%/duckdb.mk:
+	curl -sSfL --create-dirs -o $@ https://raw.githubusercontent.com/ltrgoddard/duckdb.mk/$*/duckdb.mk
 
 data/x.csv:           # rules for inputs DuckDB cannot fetch
 	curl -o $@ https://example.org/x.csv
 ```
 
 Define extra targets after the `include` so that `all` stays the default.
-Make downloads `.duckmake/$(DUCKMAKE)/duckmake.mk` once; delete that directory
+Make downloads `.duckdb.mk/$(DUCKDB_MK)/duckdb.mk` once; delete that directory
 to update a branch.
-A local copy also works: `include duckmake.mk`.
+A local copy also works: `include duckdb.mk`.

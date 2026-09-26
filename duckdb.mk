@@ -220,13 +220,13 @@ select error('stale')
 where getvariable('fp') is distinct from (
   select decode(value)
   from parquet_kv_metadata('$@')
-  where decode(key) = 'duckmake'
+  where decode(key) = 'duckdb.mk'
 );
 endef
 
 define MATERIALISE
 $(PRELUDE)
-copy (from query(getvariable('sql'))) to '$@' (format parquet, use_tmp_file true, kv_metadata {duckmake: getvariable('fp')});
+copy (from query(getvariable('sql'))) to '$@' (format parquet, use_tmp_file true, kv_metadata {'duckdb.mk': getvariable('fp')});
 $(if $(quiet),,select format('{}: {:,} rows', '$@', count(*)) from '$@';)
 endef
 

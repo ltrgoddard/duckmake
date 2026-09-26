@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# benchmarks for duckmake.mk: ./bench.sh [git ref ...] times the working copy and each ref,
+# benchmarks for duckdb.mk: ./bench.sh [git ref ...] times the working copy and each ref,
 # reporting the best of three runs in seconds; set DUCKDB and MAKE to use other executables
 cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) versions=(working "$@")
 export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make} LC_ALL=C
 mkdir "$tmp/www"; python3 test/server.py "$tmp/www" > "$tmp/requests" 2>&1 & server=$!
 trap 'kill $server; wait $server 2>/dev/null; rm -rf "$tmp"' EXIT
 until read -r HTTP S3 < "$tmp/requests"; do kill -0 $server || exit; sleep 0.1; done 2>/dev/null
-cp duckmake.mk "$tmp/working.mk" && for ref; do git show "$ref:duckmake.mk" > "$tmp/$ref.mk" || exit; done
+cp duckdb.mk "$tmp/working.mk" && for ref; do git show "$ref:duckdb.mk" > "$tmp/$ref.mk" || exit; done
 
 # models <n>: n models in ten schemas, each joining up to three earlier ones through ctes
 models() {
@@ -25,7 +25,7 @@ PY
 
 # best <setup> <reset> <command>: in a fresh project, run setup once, then reset and time the command three times
 best() {
-  rm -rf "$tmp/p" && mkdir "$tmp/p" && cd "$tmp/p" && cp "$tmp/$v.mk" duckmake.mk && echo "include duckmake.mk" > Makefile
+  rm -rf "$tmp/p" && mkdir "$tmp/p" && cd "$tmp/p" && cp "$tmp/$v.mk" duckdb.mk && echo "include duckdb.mk" > Makefile
   eval "$1" >/dev/null 2>&1
   for _ in 1 2 3; do
     eval "$2" >/dev/null 2>&1

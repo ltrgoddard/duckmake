@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# end-to-end tests for duckmake.mk: ./test.sh [suite ...] runs test/<suite>.sh, or every suite,
+# end-to-end tests for duckdb.mk: ./test.sh [suite ...] runs test/<suite>.sh, or every suite,
 # in parallel, each in a fresh project; set DUCKDB and MAKE to test other executables
 cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) start=$SECONDS pids=()
 export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make} LC_ALL=C
@@ -43,7 +43,7 @@ requests() {
 suites=("$@") && [[ $suites ]] || suites=($(ls test/*.sh | xargs -n1 basename | sed 's/\.sh$//'))
 for suite in "${suites[@]}"; do
   mkdir "$tmp/$suite" "$tmp/www/$suite" && (
-    cd "$tmp/$suite" && cp "$here/duckmake.mk" . && echo "include duckmake.mk" > Makefile
+    cd "$tmp/$suite" && cp "$here/duckdb.mk" . && echo "include duckdb.mk" > Makefile
     www=$tmp/www/$suite url=http://127.0.0.1:$HTTP/$suite s=$SECONDS
     source "$here/test/$suite.sh" || echo "FAIL $suite: stopped with status $?"
     echo "---- $suite: $((SECONDS - s))s"

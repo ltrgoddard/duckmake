@@ -57,7 +57,7 @@ mv "$www/gone.csv" "$www/b.csv"
 t "remote back is unchanged" "" build/http/text.parquet
 
 [[ $S3 == - ]] && { echo "skip s3: pip install 'moto[server]' to run"; return; }
-bucket=duckmake-$RANDOM
+bucket=duckdb-mk-$RANDOM
 boto() { python3 -c "import boto3; boto3.client('s3', endpoint_url='http://127.0.0.1:$S3', region_name='us-east-1',
   aws_access_key_id='k', aws_secret_access_key='s').$1"; }
 boto "create_bucket(Bucket='$bucket')"
