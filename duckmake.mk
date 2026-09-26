@@ -48,7 +48,7 @@ from (
   select
     filename as file,
     unnest(regexp_extract(filename, '^(models|tests)/(.+)\.sql$$', ['kind', 'stem'])),
-    json_serialize_sql(content)::json as ast
+    json_serialize_sql(content, skip_null := true, skip_empty := true)::json as ast
   from read_text(['models/**/*.sql', 'tests/**/*.sql'])
 );
 
@@ -83,7 +83,7 @@ from node
 where path like '%.cte_map.map';
 
 create table ref as
-select target, loc, lower(v->>'schema_name') as schema, lower(v->>'table_name') as name
+select target, loc, lower(coalesce(v->>'schema_name', '')) as schema, lower(v->>'table_name') as name
 from node
 where v->>'type' = 'BASE_TABLE';
 

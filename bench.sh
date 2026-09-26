@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# benchmarks for duckmake.mk: ./bench.sh [git ref ...] times the working copy and each ref,
+# reporting the best of three runs in seconds; set DUCKDB and MAKE to use other executables
+cd "$(dirname "$0")" && here=$PWD tmp=$(mktemp -d) versions=(working "$@")
+export DUCKDB=${DUCKDB:-duckdb} MAKE=${MAKE:-make}
+mkdir "$tmp/www"; python3 test/server.py "$tmp/www" > "$tmp/requests" 2>&1 & server=$!
+trap 'kill $server; wait $server 2>/dev/null; rm -rf "$tmp"' EXIT
+for _ in {1..100}; do read -r HTTP S3 < "$tmp/requests" && break; sleep 0.1; done 2>/dev/null
+cp duckmake.mk "$tmp/working.mk" && for ref; do git show "$ref:duckmake.mk" > "$tmp/$ref.mk" || exit; done
+
+# models <n>: n models in ten schemas, each joining up to three earlier ones through ctes
+models() {
+  python3 - "$1" <<'PY'
+import os, random, sys
+random.seed(1)
+for i in range(int(sys.argv[1])):
+    os.makedirs(f'models/s{i % 10}', exist_ok=True)
+    deps = random.sample(range(i), min(i, 3))
+    ctes = ', '.join(f'c{j} as (select id, k from s{d % 10}.m{d} where id % 2 = {j % 2})' for j, d in enumerate(deps))
+    sql = (f'with {ctes}\nselect c0.id, c0.k from c0 ' + ' '.join(f'left join c{j} using (id)' for j in range(1, len(deps)))
+           if deps else 'select range as id, range % 7 as k from range(1000)')
+    open(f'models/s{i % 10}/m{i}.sql', 'w').write(sql + '\n')
+PY
+}
+
+# best <setup> <reset> <command>: in a fresh project, run setup once, then reset and time the command three times
+best() {
+  rm -rf "$tmp/p" && mkdir "$tmp/p" && cd "$tmp/p" && cp "$tmp/$v.mk" duckmake.mk && echo "include duckmake.mk" > Makefile
+  eval "$1" >/dev/null 2>&1
+  for _ in 1 2 3; do
+    eval "$2" >/dev/null 2>&1
+    { TIMEFORMAT=%R; time eval "$3" >/dev/null 2>&1; } 2>&1
+  done | sort -n | head -1
+  cd "$here"
+}
+
+row() {
+  printf '%-44s' "$1"
+  for v in "${versions[@]}"; do printf '%12s' "$(best "$2" "$3" "$4")"; done; echo
+}
+
+printf '%-44s' "" && printf '%12s' "${versions[@]}" && echo
+row "plan, 500 models" "models 500" "rm -f build/plan.mk" "$MAKE build/plan.mk"
+row "plan, 2000 models" "models 2000" "rm -f build/plan.mk" "$MAKE build/plan.mk"
+row "build, 500 models, -j4" "models 500" "rm -rf build" "$MAKE -j4"
+row "no-op, 500 models" "models 500 && $MAKE -j4" "" "$MAKE"
+row "rebuild after editing a root, 500 models" "models 500 && $MAKE -j4" "touch models/s0/m0.sql" "$MAKE -j4"
+row "one model, 20M rows" \
+  "mkdir models && echo 'select range as id, hash(range) as h, range % 1000 as g, random() as r from range(20000000)' > models/big.sql" \
+  "rm -rf build" "$MAKE"
+row "  the same query in duckdb alone" "" "rm -f big.parquet" \
+  "$DUCKDB -c \"copy (select range as id, hash(range) as h, range % 1000 as g, random() as r from range(20000000)) to 'big.parquet'\""
+row "chain of four models over 10M rows" "mkdir models && \
+  echo 'select range as id, range % 5000 as well, (hash(range) % 1000)::double as oil from range(10000000)' > models/a.sql && \
+  echo 'select well, sum(oil) as oil, count(*) as n from a group by well' > models/b.sql && \
+  echo 'select a.*, b.oil / b.n as mean from a join b using (well)' > models/c.sql && \
+  echo 'select well, max(oil - mean) as peak from c group by well' > models/d.sql" \
+  "rm -rf build" "$MAKE"
+row "no-op, 100 models reading http" "for i in \$(seq 100); do printf 'k,v\na,1\n' > $tmp/www/\$i.csv; \
+  mkdir -p models && echo \"from read_csv('http://127.0.0.1:$HTTP/\$i.csv')\" > models/m\$i.sql; done && $MAKE -j4" \
+  "" "$MAKE -j4"
