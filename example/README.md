@@ -9,6 +9,7 @@ by facility type and county. All inputs are fetched live from public sources.
 make             # fetch the data and build every table
 make test        # run the tests
 make shell       # query the tables in DuckDB
+make dag         # print the graph below
 make RADIUS=100  # rebuild the matches with a 100 m search radius
 ```
 
@@ -32,4 +33,35 @@ The first run takes a few minutes. Delete `data/` to fetch the data again.
 └── tests/
     ├── emissions_positive.sql
     └── matches_unique.sql
+```
+
+`make dag` draws the dependency graph:
+
+```mermaid
+flowchart LR
+  n10[("data/plumes.json")]
+  n11[("https://www2.census.gov/geo/docs/reference/codes2020/national_county2020.txt")]
+  n12{{"test/emissions_positive"}}
+  n13{{"test/matches_unique"}}
+  n1["carbonmapper.plumes"]
+  n2["census.counties"]
+  n3["census.fips"]
+  n4["main.matches"]
+  n5["osm.facilities"]
+  n6["summary.by_county"]
+  n7["summary.by_kind"]
+  n8[("data/cb_2023_us_county_20m.shp")]
+  n9[("data/osm.json")]
+  n1 --> n12
+  n1 --> n4
+  n10 --> n1
+  n11 --> n3
+  n2 --> n1
+  n3 --> n2
+  n4 --> n13
+  n4 --> n6
+  n4 --> n7
+  n5 --> n4
+  n8 --> n2
+  n9 --> n5
 ```
