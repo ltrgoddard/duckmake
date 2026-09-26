@@ -51,7 +51,7 @@ want to build neat, reproducible data pipelines that run on a single machine.
 
 ## How to use it
 
-duckmake is delivered as a ~200-line `duckmake.mk` file, which is mostly SQL.
+duckmake is delivered as a ~250-line `duckmake.mk` file, which is mostly SQL.
 The recommended way to deploy it is to `include` it in your project's existing
 Makefile, alongside variable definitions and additional targets for things
 DuckDB can't do (e.g. downloading and extracting complex source data). For
@@ -72,3 +72,13 @@ Build tables in the normal Make way, by running `make
 build/schema/table.parquet`. duckmake will take care of dependencies,
 including checking modification dates of local and remote resources to save on
 full rebuilds and ensure fresh data when needed.
+
+## Development
+
+`./test.sh` runs the end-to-end tests in `test/` in parallel against real
+`make` and `duckdb` executables (set `MAKE` and `DUCKDB` to try others). They
+cover rebuilds, dependency resolution, errors, remote sources over HTTP and S3
+(`pip install 'moto[server]'` to include S3), a pipeline over millions of
+generated rows and a random 300-model project checked against an independent
+model of its dependency graph. `./bench.sh [git ref ...]` times the working
+copy against earlier versions.

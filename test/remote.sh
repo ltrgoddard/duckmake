@@ -51,7 +51,7 @@ printf 'k,v\nxy,2\n' > "$www/nohead.csv" && bump "$www/nohead.csv"
 t "no HEAD" "build/http/nohead.parquet"
 t "no HEAD no-op" ""
 mv "$www/b.csv" "$www/gone.csv"
-t "missing remote" "!HTTP 404" build/http/text.parquet
+t "missing remote" "!404" build/http/text.parquet
 is "missing remote keeps the last good output" "$(q "select count(*) from 'build/http/text.parquet'")" 1
 mv "$www/gone.csv" "$www/b.csv"
 t "remote back is unchanged" "" build/http/text.parquet

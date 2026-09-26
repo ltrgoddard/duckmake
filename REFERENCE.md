@@ -3,8 +3,7 @@
 ## Requirements
 
 - GNU Make 3.81 or later
-- A `duckdb` CLI recent enough for `json_serialize_sql`, `read_text` and
-  `parquet_kv_metadata`
+- The `duckdb` CLI, version 1.4 or later
 
 ## Project layout
 
@@ -60,10 +59,17 @@ on:
 | `schema.table` or `table`            | The matching model (`main` if no schema) |
 | `'build/x.parquet'` or `'schema.table'` as a string | The matching model       |
 | A local file path, e.g. `'data/x.csv'` | That file; a Make rule can create it  |
-| A glob or a bare filename, e.g. `'data/*.csv'` | `$(wildcard ...)` of it       |
+| A bare filename, e.g. `'x.csv'`      | `$(wildcard ...)` of it                 |
+| A glob, e.g. `'data/*.csv'` or `'build/marts/*.parquet'` | `$(wildcard ...)` of it and every model it matches; checked on every run |
 | `http://`, `s3://` and other URLs    | Checked on every run (see below)        |
 | `getenv('NAME')`                     | Checked on every run (see below)        |
 | Anything in `macros/`                | Every model and test                    |
+
+Strings count where DuckDB reads them as sources: as a table name
+(`from 'data/x.csv'`) or as the first argument of a table function, alone or in
+a list (`read_csv(['a.csv', 'b.csv'])`). A URL built at run time, such as
+`'https://example.org/?key=' || getenv('KEY')`, is not checked, but the
+variable is.
 
 CTE names shadow models of the same name within their scope, following
 DuckDB's rules. A table name that matches no model or CTE (e.g. one created in
@@ -75,12 +81,16 @@ Dependency cycles are an error.
 ## Rebuilds
 
 A model is rebuilt when Make finds a dependency newer than its output. A model
-that reads a URL or an environment variable is also checked on every run: its
-output stores a fingerprint of the SQL, each URL's size and modification time,
-and each variable's value in the Parquet metadata. If the fingerprint matches,
-the model is not rebuilt.
+that reads a URL, a glob or an environment variable is also checked on every
+run: its output stores a fingerprint of the SQL, the size and modification time
+of each URL and each file matching each glob, and each variable's value in the
+Parquet metadata. If the fingerprint matches, the model is not rebuilt, and
+nothing that depends on it is either. Checking a URL costs a `HEAD` request;
+one from a server that sends no `Last-Modified` header is compared by size
+alone.
 
-A failed build deletes its partial output.
+Outputs are written to a temporary file and moved into place, so a failed or
+interrupted build leaves the previous output, and the next run tries again.
 
 ## Output
 
@@ -92,7 +102,9 @@ example rows, and stops Make.
 
 The plan stops with a message for:
 
-- A file that does not parse, or has more or less than one statement
+- A file that does not parse, or is not exactly one `SELECT` statement
+  (DuckDB cannot yet serialise `PIVOT`, even in a subquery: pivot with
+  aggregate `filter` clauses instead)
 - A path with characters other than letters, digits, `_`, `-` and `/`
 - A duplicate model name
 - A dependency cycle
