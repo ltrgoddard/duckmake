@@ -1,0 +1,20 @@
+name: test
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        duckdb: [latest/download, download/v1.4.1]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install 'moto[server]'
+      - run: |
+          curl -sSfL -o duckdb.zip https://github.com/duckdb/duckdb/releases/${{ matrix.duckdb }}/duckdb_cli-${{ runner.os == 'macOS' && 'osx-universal' || 'linux-amd64' }}.zip
+          unzip -q duckdb.zip -d "$RUNNER_TEMP" && echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - run: make --version | head -1 && duckdb --version && ./test.sh

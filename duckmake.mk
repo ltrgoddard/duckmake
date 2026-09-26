@@ -10,6 +10,7 @@ run    := $(duckdb) -cmd '.output /dev/null' $(macros:%=-cmd '.read %') -cmd '.o
 views   = $(foreach d,$^,$($d.view))
 flags   = $(if $(findstring =,$(firstword $(MAKEFLAGS))),,$(firstword -$(MAKEFLAGS)))
 quiet   = $(findstring s,$(flags))
+recheck = $(if $(filter-out FORCE,$?)$(findstring B,$(flags)),,$(run) "$$FRESH" 2>/dev/null ||)
 
 all:
 clean: ; rm -rf $(BUILD)
@@ -28,7 +29,7 @@ $(BUILD)/plan.mk: $(self) $(tree)
 	@mkdir -p $(@D) && $(duckdb) -c "$$PLAN" > $@
 
 $(BUILD)/%.parquet: models/%.sql $(wildcard macros) $(macros)
-	@$(if $(filter-out FORCE,$?)$(findstring B,$(flags)),,$(run) "$$FRESH" 2>/dev/null ||) { mkdir -p $(@D) && $(run) "$$MATERIALISE"; }
+	@$(recheck) { mkdir -p $(@D) && $(run) "$$MATERIALISE"; }
 
 $(tests): test/%: tests/%.sql $(macros)
 	@$(run) "$$ASSERT"
@@ -83,7 +84,7 @@ from node
 where path like '%.cte_map.map';
 
 create table ref as
-select target, loc, lower(coalesce(v->>'schema_name', '')) as schema, lower(v->>'table_name') as name
+select target, loc, lower(v->>'schema_name') as schema, lower(v->>'table_name') as name
 from node
 where v->>'type' = 'BASE_TABLE';
 
@@ -111,10 +112,10 @@ select r.target, m.target as dep
 from ref as r
 left join src as m
   on m.kind = 'models'
-  and m.schema = coalesce(nullif(r.schema, ''), 'main')
+  and m.schema = coalesce(r.schema, 'main')
   and m.name = r.name
 where not regexp_matches(r.name, '[./]')
-  and (r.schema <> '' or not exists (
+  and (r.schema is not null or not exists (
     from cte as c
     where c.target = r.target
       and c.name = r.name
