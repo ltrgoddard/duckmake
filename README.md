@@ -19,6 +19,9 @@ interface.
 
 ## Quick start
 
+You need [DuckDB](https://duckdb.org) 1.4.1 or later, GNU Make 3.81 or later
+(the version that ships with macOS works) and `curl`.
+
 Include this snippet at the top of your Makefile to install duckdb.mk v0.1.0
 on next build; set `DUCKDB_MK` to a newer tag, or `main`, to upgrade. Then
 write a `SELECT` query as a .sql file under `models/` and run `make` to
@@ -53,15 +56,6 @@ build/revenue.parquet: 2 rows
 $ make
 make: Nothing to be done for `all'.
 ```
-
-## Requirements
-
-- [DuckDB](https://duckdb.org) 1.4.1 or later
-- GNU Make 3.81 or later (the version that ships with macOS works)
-- `curl`, to fetch duckdb.mk with the snippet above
-
-CI runs the test suite on Linux and macOS against DuckDB 1.4.1 and the latest
-release.
 
 ## How it works
 
