@@ -1,6 +1,6 @@
 export RADIUS ?= 250
 
-DUCKDB_MK = v0.1.0
+DUCKDB_MK = v0.1.1
 include .duckdb.mk/$(DUCKDB_MK)/duckdb.mk
 .duckdb.mk/%/duckdb.mk:
 	curl -sSfL --create-dirs -o $@ \
